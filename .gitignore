@@ -1,0 +1,14 @@
+# dependencies
+node_modules
+
+# Build
+build
+
+# Misc
+npm-debug.log*
+
+# Webstorm config
+.idea
+
+# TS incremental build data
+.tsbuildinfo

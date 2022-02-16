@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig-base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "incremental": false,
+    "declaration": true,
+    "sourceMap": true,
+    "declarationMap": false,
+    "rootDir": "src/lib",
+    "baseUrl": "src/lib"
+  },
+  "include": ["src/lib"],
+  "exclude": ["node_modules", "src/**/*.spec.ts"],
+}
