@@ -1,8 +1,10 @@
 {
   "name": "radius-tracker",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Find usages of React components in the codebase",
   "main": "index.js",
+  "types": "index.d.ts",
+  "bin": "cli.js",
   "scripts": {
     "test": "npm run task test",
     "build": "npm run task build",
