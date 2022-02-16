@@ -1,7 +1,7 @@
 {
   "name": "radius-tracker",
-  "version": "0.0.1",
-  "description": "",
+  "version": "0.0.2",
+  "description": "Find usages of React components in the codebase",
   "main": "index.js",
   "scripts": {
     "test": "npm run task test",
@@ -9,8 +9,17 @@
     "task": "npm install --no-audit && ts-node -T src/tasks/tasks.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "Arseny Smoogly",
+    "email": "arseny@smoogly.ru",
+    "url": "http://smoogly.ru"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rangle/radius-tracker.git"
+  },
+  "homepage": "https://github.com/rangle/radius-tracker#readme",
   "dependencies": {
     "glob": "^7.2.0",
     "ignore": "^5.2.0",
