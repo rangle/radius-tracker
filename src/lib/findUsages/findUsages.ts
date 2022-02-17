@@ -1,4 +1,4 @@
-import { CallExpression, Node } from "ts-morph";
+import { CallExpression, Node, SpreadElement } from "ts-morph";
 import { ValueExport } from "../resolveDependencies/identifyExports";
 import { getImportNode, Import } from "../resolveDependencies/identifyImports";
 import { ResolveDependencies } from "../resolveDependencies/resolveDependencies";
@@ -6,9 +6,6 @@ import { atLeastOne, isNot, isNotNull, unexpected } from "../guards";
 
 const getStatement = (node: Node) => Node.isStatement(node) ? node : node.getAncestors().find(Node.isStatement);
 export const describeNode = (node: Node) => `${ node.getKindName() } '${ node.print({ removeComments: true }) }' in '${ getStatement(node)?.print() ?? "no statement" }'`; // TODO: extract into a shared util
-
-const unexpectedNode = (node: Node): never => { throw new Error(`Unhandled node ${ describeNode(node as unknown as Node) }`); };
-const unexpectedParent = (parent: Node, node: Node): never => { throw new Error(`Unhandled parent node: ${ describeNode(parent as unknown as Node) } as parent of ${ describeNode(node) } in ${ node.getSourceFile().getFilePath() }`); };
 
 export type Trace = TraceExport | TraceImport | TraceHoc | TraceRef;
 export type TraceExport = { type: "export", exp: ValueExport };
@@ -34,17 +31,19 @@ export type Usage = {
     aliasPath: string[],
 };
 
+export type FindUsageWarning = AmbiguousArraySpreadAssignmentWarning | UnhandledNodeType;
+export type AmbiguousArraySpreadAssignmentWarning = { type: "find-usage-ambiguous-array-spread-assignment", message: string, spread: SpreadElement };
+export type UnhandledNodeType = { type: "find-usage-unhandled-node-type", message: string, useCase: string, nodeKind: string, node: Node };
+
 type ResolutionTarget = { node: Node, aliasPath: string[] };
 type ResolvedTarget = (ResolutionTarget & { trace: Trace[], isPotentialUsage: boolean });
 
 
-export type FindUsages = (component: Node) => Usage[];
-export type FindUsageOptions = {
-    throwOnUnhandledNode?: boolean,
-};
+export type FindUsages = (component: Node) => { usages: Usage[], warnings: FindUsageWarning[] };
 
-export function setupFindUsages(dependencies: ResolveDependencies, options?: FindUsageOptions): FindUsages {
-    return function findUsages(component: Node): Usage[] {
+export function setupFindUsages(dependencies: ResolveDependencies): FindUsages {
+    return function findUsages(component: Node): { usages: Usage[], warnings: FindUsageWarning[] } {
+        const warnings: FindUsageWarning[] = [];
         const allUsages = follow(
             dependencies, {
                 isPotentialUsage: false, // Initial node should not be counted as a usage
@@ -54,28 +53,32 @@ export function setupFindUsages(dependencies: ResolveDependencies, options?: Fin
             },
             component,
             [],
-            options || {},
+            warning => warnings.push(warning),
         );
-        return Array.from(
+
+        const usages = Array.from(
             allUsages
                 // Since nodes can be reached via different paths,
                 // for each node pick the usages with the longest trace.
-                .reduce((usages, one) => {
-                    const existing = usages.get(one.use);
+                .reduce((_usages, one) => {
+                    const existing = _usages.get(one.use);
                     if (existing && existing.trace.length > one.trace.length) {
-                        return usages;
+                        return _usages;
                     }
 
-                    usages.set(one.use, one);
-                    return usages;
+                    _usages.set(one.use, one);
+                    return _usages;
                 }, new Map<Node, Usage>())
                 .values(),
         );
+
+        return { usages, warnings };
     };
 }
 
 
-type FollowStrategy = (target: ResolutionTarget, dependencies: ResolveDependencies, options: FindUsageOptions) => ResolvedTarget[];
+type Warn = (warning: FindUsageWarning) => void;
+type FollowStrategy = (target: ResolutionTarget, dependencies: ResolveDependencies, warn: Warn) => ResolvedTarget[];
 
 const followExport: FollowStrategy = (target, dependencies) => {
     const matchingExports = Array.from(dependencies.filterExports(exp => exp.exported === target.node));
@@ -93,7 +96,7 @@ const followExport: FollowStrategy = (target, dependencies) => {
 };
 
 // Is node on the left hand side a definition for an identifier?
-const isIdentifierDefinitionParent = (node: Node, throwOnUnhandledNode: boolean): boolean => {
+const isIdentifierDefinitionParent = (node: Node, warn: Warn): boolean => {
     // These happen, but not valid definition parents
     if (Node.isCallExpression(node)) { return false; }
     if (Node.isPropertyAssignment(node)) { return false; }
@@ -130,12 +133,18 @@ const isIdentifierDefinitionParent = (node: Node, throwOnUnhandledNode: boolean)
     if (Node.isFunctionDeclaration(node)) { return true; }
     if (Node.isBinaryExpression(node)) { return true; }
 
-    if (throwOnUnhandledNode) { return unexpectedNode(node); }
+    warn({
+        type: "find-usage-unhandled-node-type",
+        message: `Unhandled node ${ describeNode(node) }`,
+        useCase: "isIdentifierDefinitionParent",
+        nodeKind: node.getKindName(),
+        node,
+    });
     return false; // Not a definition node by default
 };
 
 // Is the node on the right hand side a valid usage position for a ref?
-const isReferenceUsage = (node: Node, throwOnUnhandledNode: boolean): boolean => {
+const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     const parent = node.getParent();
     if (!parent) { return false; }
 
@@ -181,15 +190,21 @@ const isReferenceUsage = (node: Node, throwOnUnhandledNode: boolean): boolean =>
     if (Node.isReturnStatement(parent)) { return true; }
     if (Node.isExpressionWithTypeArguments(parent)) { return true; } // `extends <node>` clause in class declaration
 
-    if (throwOnUnhandledNode) { return unexpectedParent(parent, node); }
+    warn({
+        type: "find-usage-unhandled-node-type",
+        message: `Unhandled parent node: ${ describeNode(parent as unknown as Node) } as parent of ${ describeNode(node) } in ${ node.getSourceFile().getFilePath() }`,
+        useCase: "isReferenceUsage",
+        nodeKind: parent.getKindName(),
+        node: parent,
+    });
     return true; // Consider node a usage by default
 };
 
-const followRefs: FollowStrategy = ({ node, aliasPath }, _, options) => {
+const followRefs: FollowStrategy = ({ node, aliasPath }, _, warn) => {
     if (!Node.isIdentifier(node)) { return []; }
 
     const parent = node.getParent();
-    if (!parent || !isIdentifierDefinitionParent(parent, Boolean(options.throwOnUnhandledNode))) { return []; }
+    if (!parent || !isIdentifierDefinitionParent(parent, warn)) { return []; }
 
     // `findReferences` sometimes finds refs in other files, but not reliably.
     // We're limiting the search to references in same source file, because
@@ -198,10 +213,10 @@ const followRefs: FollowStrategy = ({ node, aliasPath }, _, options) => {
         .filter(ref => ref.getSourceFile() === node.getSourceFile())
         .filter(ref => ref !== node);
 
-    return localReferences.map((ref): ResolvedTarget => ({ node: ref, aliasPath, trace: [], isPotentialUsage: isReferenceUsage(ref, Boolean(options.throwOnUnhandledNode)) }));
+    return localReferences.map((ref): ResolvedTarget => ({ node: ref, aliasPath, trace: [], isPotentialUsage: isReferenceUsage(ref, warn) }));
 };
 
-const followParent: FollowStrategy = ({ node, aliasPath }): ReturnType<FollowStrategy> => {
+const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn): ReturnType<FollowStrategy> => {
     if (Node.isStatement(node)) { return []; }
 
     const parent = node.getParent();
@@ -214,9 +229,15 @@ const followParent: FollowStrategy = ({ node, aliasPath }): ReturnType<FollowStr
     if (Node.isArrayLiteralExpression(parent)) {
         const nodeIdx = parent.getElements().findIndex(el => el === node);
 
-        const spreadIdx = parent.getElements().findIndex(Node.isSpreadElement);
-        if (spreadIdx !== -1 && spreadIdx < nodeIdx) {
-            throw new Error("Can not follow array declaration with rest expression before target");
+        const firstSpread = parent.getElements().find(Node.isSpreadElement);
+        const firstSpreadIdx = firstSpread ? parent.getElements().indexOf(firstSpread) : -1;
+        if (firstSpread && firstSpreadIdx !== -1 && firstSpreadIdx < nodeIdx) {
+            warn({
+                type: "find-usage-ambiguous-array-spread-assignment",
+                message: `Can not follow array declaration with rest expression before target: ${ describeNode(firstSpread) }`,
+                spread: firstSpread,
+            });
+            return [];
         }
 
         if (nodeIdx === -1) { throw new Error(`Could not find ${ describeNode(node) } in ${ describeNode(parent) }`); }
@@ -231,7 +252,7 @@ const followParent: FollowStrategy = ({ node, aliasPath }): ReturnType<FollowStr
 };
 
 // Given a node of the particular type on the left side — how should it be followed?
-const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, options): ReturnType<FollowStrategy> => {
+const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<FollowStrategy> => {
     // TODO: annotate each check with the code it's dealing with
     if (Node.isStatement(node) && !Node.isClassDeclaration(node)) { return []; }
     if (Node.isAwaitExpression(node)) { return []; }
@@ -290,7 +311,14 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, options): ReturnTy
             return [{ node: variableNameNode, aliasPath, trace: [], isPotentialUsage: false }];
         }
 
-        return unexpectedNode(variableNameNode);
+        warn({
+            type: "find-usage-unhandled-node-type",
+            message: `Unhandled node ${ describeNode(variableNameNode) }`,
+            useCase: "stepIntoNode-variable-declaration-name",
+            nodeKind: (variableNameNode as unknown as Node).getKindName(),
+            node: variableNameNode,
+        });
+        return [];
     }
 
     if (Node.isPropertyAccessExpression(node)) {
@@ -402,14 +430,20 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, options): ReturnTy
         return [{ node: node.getRight(), aliasPath: [], trace: [], isPotentialUsage: false }];
     }
 
-    if (options.throwOnUnhandledNode) { return unexpectedNode(node); }
+    warn({
+        type: "find-usage-unhandled-node-type",
+        message: `Unhandled node ${ describeNode(node) }`,
+        useCase: "stepIntoNode",
+        nodeKind: node.getKindName(),
+        node,
+    });
     return []; // Don't step in by default
 };
 
 const strategies: FollowStrategy[] = [followParent, stepIntoNode, followExport, followRefs];
-function follow(dependencies: ResolveDependencies, target: ResolvedTarget, originalTarget: Node, visited: ResolutionTarget[], options: FindUsageOptions): Usage[] {
+function follow(dependencies: ResolveDependencies, target: ResolvedTarget, originalTarget: Node, visited: ResolutionTarget[], warn: Warn): Usage[] {
     const next = strategies
-        .map(s => s(target, dependencies, options))
+        .map(s => s(target, dependencies, warn))
         .reduce((a, b) => [...a, ...b], [])
         .filter(item => !visited.some(v => v.node === item.node && JSON.stringify(v.aliasPath) === JSON.stringify(item.aliasPath)));
 
@@ -420,7 +454,7 @@ function follow(dependencies: ResolveDependencies, target: ResolvedTarget, origi
             return follow(dependencies, {
                 ...nextTarget,
                 trace: [...target.trace, ...nextTarget.trace],
-            }, originalTarget, nextVisited, options);
+            }, originalTarget, nextVisited, warn);
         })
         .reduce((a, b) => [...a, ...b], []);
 

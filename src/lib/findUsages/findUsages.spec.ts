@@ -2,6 +2,7 @@ import { describeNode, FindUsages, setupFindUsages } from "./findUsages";
 import { CommentRange, Node, Project } from "ts-morph";
 import { resolveDependencies } from "../resolveDependencies/resolveDependencies";
 import { ResolveModule } from "../resolveModule/resolveModule";
+import { atLeastOne } from "../guards";
 
 const ensure = <T>(val: T | undefined): T => {
     if (val === undefined) { throw new Error("Unexpected undefined"); }
@@ -59,9 +60,11 @@ describe("findUsages", () => { // TODO: test traces
         const expectedUsages = commentRanges.filter(({ comment }) => comment.getText().includes("*")).map(c => identifyTarget(c, "*"));
 
         const target = identifyTarget(targetComment, "#");
-        const usages = findUsages(target);
+        const { usages, warnings } = findUsages(target);
 
-        expect(usages.length).toBe(expectedUsages.length);
+        expect(usages).toHaveLength(expectedUsages.length);
+        expect(warnings).toHaveLength(0); // Should have no warnings
+
         expectedUsages.forEach(expectedUsage => {
             const usage = usages.find(({ use }) => expectedUsage === use);
             if (!usage) { throw new Error(`Expected to find usage at ${ describeNode(expectedUsage) }`); }
@@ -78,7 +81,7 @@ describe("findUsages", () => { // TODO: test traces
         findUsages = (...args) => {
             if (!find) {
                 const resolveModule = jest.fn<ReturnType<ResolveModule>, Parameters<ResolveModule>>().mockImplementation(target => project.getSourceFiles().find(f => f.getFilePath() === target) ?? null);
-                find = setupFindUsages(resolveDependencies(project, resolveModule), { throwOnUnhandledNode: true });
+                find = setupFindUsages(resolveDependencies(project, resolveModule));
             }
 
             return find(...args);
@@ -383,7 +386,7 @@ describe("findUsages", () => { // TODO: test traces
         assertUsagesFound();
     });
 
-    it("should throw when array literal uses a spread element before the target", async () => {
+    it("should warn when array literal uses a spread element before the target", async () => {
         // TODO: in this case theoretically we could still track the `arr` usage — we know that it contains the target somewhere
         const source = project.createSourceFile("tst.js", `
             const target = 1;
@@ -392,7 +395,13 @@ describe("findUsages", () => { // TODO: test traces
             const arr = [...filler, target];
         `);
         const identifier = ensure(source.forEachDescendantAsArray().find(Node.isIdentifier));
-        expect(() => findUsages(identifier)).toThrowError(/Can not follow array declaration with rest expression before target/);
+        const { warnings } = findUsages(identifier);
+
+        expect(warnings).toHaveLength(1);
+
+        const [warning] = atLeastOne(warnings);
+        if (warning.type !== "find-usage-ambiguous-array-spread-assignment") { throw new Error("Expected an ambiguous spread assignment warning"); }
+        expect(warning.spread.getText()).toBe("...filler");
     });
 
     it("should follow array use with spread literal after the target", async () => {

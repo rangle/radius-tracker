@@ -29,7 +29,13 @@ export const isESMImportDynamic = (imp: Import): imp is ESMImportDynamic => imp.
 export type CJSImport = { type: "cjs-import", importCall: CallExpression, moduleSpecifier: string };
 export const isCJSImport = (imp: Import): imp is CJSImport => imp.type === "cjs-import";
 
-export function identifyImports(file: SourceFile): Import[] {
+
+export type ImportWarning = UnresolvedModuleSpecifierWarning;
+export type UnresolvedModuleSpecifierWarning = { type: "import-unresolved-module-specifier", message: string, moduleSpecifier: Node };
+
+export function identifyImports(file: SourceFile): { imports: Import[], warnings: ImportWarning[] } {
+    const warnings: ImportWarning[] = [];
+
     const cjsRequires = file.forEachDescendantAsArray()
         .filter(Node.isCallExpression)
         .filter(call => {
@@ -38,17 +44,26 @@ export function identifyImports(file: SourceFile): Import[] {
             return exp.getText({ trimLeadingIndentation: true, includeJsDocComments: false }) === "require";
         })
         .filter(call => !call.getAncestors().some(Node.isImportEqualsDeclaration))
-        .map((callExpression): CJSImport => {
+        .map((callExpression): CJSImport | null => {
             const [moduleRef] = callExpression.getArguments();
             if (!moduleRef) { throw new Error(`Implementation error: Expected require call expression to have at least one argument. Reading ${ describeNode(callExpression) } in ${ file.getFilePath() }`); }
 
-            if (!Node.isStringLiteral(moduleRef) && !Node.isNoSubstitutionTemplateLiteral(moduleRef)) { throw new Error(`Dynamic cjs require calls not supported. Reading ${ describeNode(callExpression) } in ${ file.getFilePath() }`); }
+            if (!Node.isStringLiteral(moduleRef) && !Node.isNoSubstitutionTemplateLiteral(moduleRef)) {
+                warnings.push({
+                    type: "import-unresolved-module-specifier",
+                    message: `Dynamic cjs require call module specifier not supported. Reading ${ describeNode(callExpression) } in ${ file.getFilePath() }`,
+                    moduleSpecifier: moduleRef,
+                });
+                return null;
+            }
+
             return {
                 type: "cjs-import",
                 importCall: callExpression,
                 moduleSpecifier: moduleRef.getLiteralValue(),
             };
-        });
+        })
+        .filter(isNotNull);
 
     const importDeclarations = file.getImportDeclarations()
         .map((imp): (Import | null)[] => {
@@ -80,38 +95,59 @@ export function identifyImports(file: SourceFile): Import[] {
 
     const importEquals = file.forEachDescendantAsArray()
         .filter(Node.isImportEqualsDeclaration)
-        .map((imp): ESMImportEquals => {
+        .map((imp): ESMImportEquals | null => {
             const moduleReference = imp.getModuleReference();
             if (!Node.isExternalModuleReference(moduleReference)) { throw new Error(`Implementation error: Expected an external module reference. Reading ${ describeNode(imp) } in ${ file.getFilePath() }`); }
 
             const moduleName = moduleReference.getExpression();
-            if (!Node.isStringLiteral(moduleName) && !Node.isNoSubstitutionTemplateLiteral(moduleName)) { throw new Error(`Dynamic imports not supported. Reading ${ describeNode(imp) } in ${ file.getFilePath() }`); }
+            if (!moduleName) { throw new Error(`Implementation error: Expected import equals to have a module name. Reading ${ describeNode(imp) } in ${ file.getFilePath() }`); }
+
+            if (!Node.isStringLiteral(moduleName) && !Node.isNoSubstitutionTemplateLiteral(moduleName)) {
+                warnings.push({
+                    type: "import-unresolved-module-specifier",
+                    message: `Dynamic esm import equals module specifier not supported. Reading ${ describeNode(imp) } in ${ file.getFilePath() }`,
+                    moduleSpecifier: moduleName,
+                });
+                return null;
+            }
 
             return {
                 type: "esm-equals",
                 identifier: imp.getNameNode(),
                 moduleSpecifier: moduleName.getLiteralValue(),
             };
-        });
+        })
+        .filter(isNotNull);
 
     const dynamicImports = file.forEachDescendantAsArray()
         .filter(Node.isImportExpression)
-        .map((importExpr): ESMImportDynamic => {
+        .map((importExpr): ESMImportDynamic | null => {
             const callExpression = importExpr.getParent();
             if (!Node.isCallExpression(callExpression)) { throw new Error(`Implementation error: Expected import expression parent to be a call expression. Reading ${ describeNode(callExpression) } in ${ file.getFilePath() }`); }
 
             const [moduleRef] = callExpression.getArguments();
             if (!moduleRef) { throw new Error(`Implementation error: Expected import call expression to have at least one argument. Reading ${ describeNode(callExpression) } in ${ file.getFilePath() }`); }
 
-            if (!Node.isStringLiteral(moduleRef) && !Node.isNoSubstitutionTemplateLiteral(moduleRef)) { throw new Error(`Dynamic imports not supported. Reading ${ describeNode(callExpression) } in ${ file.getFilePath() }`); }
+            if (!Node.isStringLiteral(moduleRef) && !Node.isNoSubstitutionTemplateLiteral(moduleRef)) {
+                warnings.push({
+                    type: "import-unresolved-module-specifier",
+                    message: `Dynamic esm import module specifier not supported. Reading ${ describeNode(importExpr) } in ${ file.getFilePath() }`,
+                    moduleSpecifier: moduleRef,
+                });
+                return null;
+            }
             return {
                 type: "esm-dynamic",
                 importCall: callExpression,
                 moduleSpecifier: moduleRef.getLiteralValue(),
             };
-        });
+        })
+        .filter(isNotNull);
 
-    return [...importEquals, ...importDeclarations, ...dynamicImports, ...cjsRequires];
+    return {
+        imports: [...importEquals, ...importDeclarations, ...dynamicImports, ...cjsRequires],
+        warnings,
+    };
 }
 
 export const getImportNode = (imp: Import): Node => {

@@ -3,6 +3,7 @@ export type {
     FilterImports,
     ResolveExportUses,
     ResolveDependencies,
+    DependencyResolutionWarning,
 } from "./resolveDependencies/resolveDependencies";
 
 export type {
@@ -26,6 +27,7 @@ export type {
     ESMImportNamed,
     ESMImportDynamic,
     CJSImport,
+    ImportWarning,
 } from "./resolveDependencies/identifyImports";
 
 export type { ResolveModule } from "./resolveModule/resolveModule";
@@ -38,7 +40,7 @@ export type {
     TraceRef,
     Usage,
     FindUsages,
-    FindUsageOptions,
+    FindUsageWarning,
 } from "./findUsages/findUsages";
 
 export {

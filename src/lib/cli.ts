@@ -8,12 +8,12 @@ import ignore from "ignore";
 import { sync as globSync } from "glob";
 import { SUPPORTED_FILE_TYPES } from "./supportedFileTypes";
 import { Project, ProjectOptions } from "ts-morph";
-import { ComponentDeclaration, detectSnowflakes } from "./detectSnowflakes/detectSnowflakes";
+import { detectSnowflakes } from "./detectSnowflakes/detectSnowflakes";
 import { resolveDependencies } from "./resolveDependencies/resolveDependencies";
 import { setupModuleResolution } from "./resolveModule/resolveModule";
-import { setupFindUsages, Usage } from "./findUsages/findUsages";
-import { isNotNull } from "./guards";
-import { getImportNode, Import } from "./resolveDependencies/identifyImports";
+import { FindUsageWarning, setupFindUsages, Usage } from "./findUsages/findUsages";
+import { objectKeys } from "./guards";
+import { getImportNode } from "./resolveDependencies/identifyImports";
 
 const args = yargs(hideBin(process.argv))
     .command("$0 <path>", "Detect snowflakes and target usages in the specified codebase")
@@ -63,64 +63,50 @@ const config: ProjectOptions =
     : { compilerOptions: { allowJs: true } };
 
 const project = new Project(config);
-
-project.addSourceFilesAtPaths(projectFiles);
-const sourceFiles = project.getSourceFiles();
-
-const snowflakes = sourceFiles.map(detectSnowflakes).reduce((a, b) => [...a, ...b], []);
+projectFiles.forEach(f => project.addSourceFileAtPath(f));
+const snowflakes = project.getSourceFiles().map(detectSnowflakes).reduce((a, b) => [...a, ...b], []);
 
 const dependencies = resolveDependencies(project, setupModuleResolution(project, process.cwd()));
 const findUsages = setupFindUsages(dependencies);
+const findUsageWarnings: FindUsageWarning[] = [];
 
-const snowflakeUsages = (def: ComponentDeclaration) => findUsages(def.identifier ?? def.declaration);
-snowflakes
-    .map(snowflake => ({ snowflake, usages: snowflakeUsages(snowflake) }))
-    .forEach(({ snowflake, usages }) => {
-        const useStrings = usages
-            .map(({ use }) => {
-                const fp = use.getSourceFile().getFilePath();
-                if (testFileRe.test(fp)) { return null; } // Ignore test files
-                return use.getParent()?.print() ?? use.print();
-            })
-            .filter(isNotNull);
+const snowflakeUsageData = snowflakes.map(snowflake => {
+    const { usages, warnings } = findUsages(snowflake.identifier ?? snowflake.declaration);
+    findUsageWarnings.push(...warnings);
 
-        console.log("\n\n\n-----------------\n");
-        console.log("SNOWFLAKE", snowflake.identifier?.getText() ?? snowflake.declaration.print(), useStrings.length);
-        useStrings.forEach(us => console.log(us));
-    });
-
-const targetImports = dependencies.filterImports(imp => targetImportRe.test(imp.moduleSpecifier));
-const targetUsages = Array.from(
-    targetImports
-        .map(imp => ({ imp, usages: findUsages(getImportNode(imp)) }))
-        .reduce((components, one) => {
-            const importKey = getImportNode(one.imp).print();
-            const ofThatModule = components.get(importKey) ?? [];
-            ofThatModule.push(one);
-            components.set(importKey, ofThatModule);
-            return components;
-        }, new Map<string, { imp: Import, usages: Usage[] }[]>())
-        .values(),
-);
-
-targetUsages.forEach(ofThatModule => {
-    const useStrings = ofThatModule
-        .map(({ usages }) => {
-            return usages
-                .map(({ use }) => {
-                    const fp = use.getSourceFile().getFilePath();
-                    if (testFileRe.test(fp)) { return null; } // Ignore test files
-                    return use.getParent()?.print() ?? use.print();
-                })
-                .filter(isNotNull);
-        })
-        .reduce((a, b) => [...a, ...b], []);
-
-    const [firstUsage] = ofThatModule;
-    if (!firstUsage) { throw new Error("Implementation error: expected at least one usage"); }
-
-    console.log("\n\n\n-----------------\n");
-    console.log("TARGET", getImportNode(firstUsage.imp).print(), useStrings.length);
-    useStrings.forEach(us => console.log(us));
+    return {
+        description: snowflake.identifier?.getText() ?? snowflake.declaration.print(),
+        usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())),
+        type: "SNOWFLAKE",
+    };
 });
 
+const targetImports = dependencies.filterImports(imp => targetImportRe.test(imp.moduleSpecifier));
+const usagesByImportKey = targetImports
+    .map(imp => {
+        const { usages, warnings } = findUsages(getImportNode(imp));
+        findUsageWarnings.push(...warnings);
+
+        return {
+            key: getImportNode(imp).print(),
+            usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())),
+        };
+    })
+    .reduce((components, { key, usages }) => {
+        // eslint-disable-next-line @typescript-eslint/no-extra-parens
+        components[key] = [...(components[key] ?? []), ...usages];
+        return components;
+    }, {} as { [prop: string]: Usage[] });
+
+const targetUsageData = objectKeys(usagesByImportKey).map(description => ({
+    usages: usagesByImportKey[description] ?? [],
+    type: "TARGET",
+    description,
+}));
+
+[...dependencies.warnings, ...findUsageWarnings].forEach(warn => console.log(`WARNING: ${ warn.message }`));
+[...snowflakeUsageData, ...targetUsageData].forEach(({ type, description, usages }) => {
+    console.log("\n\n\n-----------------\n");
+    console.log(type, description, usages.length);
+    usages.forEach(({ use }) => console.log(use.getParent()?.print() ?? use.print()));
+});

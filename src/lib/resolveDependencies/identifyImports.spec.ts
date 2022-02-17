@@ -1,4 +1,4 @@
-import { Project } from "ts-morph";
+import { Node, Project } from "ts-morph";
 import {
     identifyImports, isCJSImport,
     isESMImportDefault,
@@ -17,7 +17,7 @@ describe("Identify imports", () => {
     });
 
     it("should find default import", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             import val from "module"
         `));
 
@@ -30,7 +30,7 @@ describe("Identify imports", () => {
     });
 
     it("should find namespace import", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             import * as val from "module"
         `));
 
@@ -43,7 +43,7 @@ describe("Identify imports", () => {
     });
 
     it("should find named import", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             import { val as alias } from "module"
         `));
 
@@ -57,7 +57,7 @@ describe("Identify imports", () => {
     });
 
     it("should find combined imports in a single import definition", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             import def, { val as alias, thirdOne } from "module"
         `));
 
@@ -65,7 +65,7 @@ describe("Identify imports", () => {
     });
 
     it("should find import equals assignment", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             import val = require("module");
         `));
 
@@ -77,15 +77,22 @@ describe("Identify imports", () => {
         expect(imp.identifier.getText()).toBe("val");
     });
 
-    it("should throw import equals assignment does not have a string module identifier", async () => {
-        expect(() => identifyImports(project.createSourceFile("tst.js", `
+    it("should warn if import equals assignment does not have a string module identifier", async () => {
+        const { warnings } = identifyImports(project.createSourceFile("tst.js", `
             const mod = "module"; 
             import val = require(mod);
-        `))).toThrowError(/Dynamic imports not supported/);
+        `));
+
+        expect(warnings).toHaveLength(1);
+
+        const [warning] = atLeastOne(warnings);
+        expect(warning).toHaveProperty("type", "import-unresolved-module-specifier");
+        expect(Node.isIdentifier(warning.moduleSpecifier)).toBe(true);
+        expect(warning.moduleSpecifier.getText()).toBe("mod");
     });
 
     it("should find dynamic imports", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             async function tst() {
                 await import("module");
             }
@@ -100,16 +107,23 @@ describe("Identify imports", () => {
     });
 
     it("should throw if dynamic import is used without string module identifier", async () => {
-        expect(() => identifyImports(project.createSourceFile("tst.js", `
+        const { warnings } = identifyImports(project.createSourceFile("tst.js", `
             async function tst() {
                 const mod = "module"; 
                 await import(mod);
             }
-        `))).toThrowError(/Dynamic imports not supported/);
+        `));
+
+        expect(warnings).toHaveLength(1);
+
+        const [warning] = atLeastOne(warnings);
+        expect(warning).toHaveProperty("type", "import-unresolved-module-specifier");
+        expect(Node.isIdentifier(warning.moduleSpecifier)).toBe(true);
+        expect(warning.moduleSpecifier.getText()).toBe("mod");
     });
 
     it("should detect cjs require imports", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             const val = require("module");
         `));
 
@@ -122,14 +136,21 @@ describe("Identify imports", () => {
     });
 
     it("should throw if cjs require import is used without string module identifier", async () => {
-        expect(() => identifyImports(project.createSourceFile("tst.js", `
+        const { warnings } = identifyImports(project.createSourceFile("tst.js", `
             const mod = "module"; 
             require(mod);
-        `))).toThrowError(/Dynamic cjs require calls not supported/);
+        `));
+
+        expect(warnings).toHaveLength(1);
+
+        const [warning] = atLeastOne(warnings);
+        expect(warning).toHaveProperty("type", "import-unresolved-module-specifier");
+        expect(Node.isIdentifier(warning.moduleSpecifier)).toBe(true);
+        expect(warning.moduleSpecifier.getText()).toBe("mod");
     });
 
     it("should ignore type-only imports", async () => {
-        const imports = identifyImports(project.createSourceFile("tst.js", `
+        const { imports } = identifyImports(project.createSourceFile("tst.js", `
             import type { t } from "module"
         `));
 

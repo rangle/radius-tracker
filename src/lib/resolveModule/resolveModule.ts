@@ -2,7 +2,7 @@ import { Project, SourceFile, ts } from "ts-morph";
 import { SUPPORTED_FILE_TYPES } from "../supportedFileTypes";
 
 export type ResolveModule = (moduleName: string, containingFile: string) => SourceFile | null;
-export const setupModuleResolution = (project: Project, cwd: string): ResolveModule => {
+export const setupModuleResolution = (project: Project, cwd: string): ResolveModule => { // TODO: produce module resolution warnings
     const realpath = project.getModuleResolutionHost().realpath;
     if (!realpath) { throw new Error("realpath not defined on module resolution host"); }
 

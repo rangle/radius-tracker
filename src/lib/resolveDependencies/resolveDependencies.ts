@@ -6,7 +6,14 @@ import {
     identifyExports,
     isValueExport, ValueExport,
 } from "./identifyExports";
-import { getImportFile, identifyImports, Import } from "./identifyImports";
+import {
+    ESMImportDefault,
+    getImportFile,
+    identifyImports,
+    Import,
+    ImportWarning,
+    isESMImportDefault,
+} from "./identifyImports";
 import { unexpected } from "../guards";
 import { describeNode } from "../findUsages/findUsages";
 
@@ -14,10 +21,14 @@ export type FilterImports = (predicate: (imp: Import) => boolean) => Import[];
 export type FilterExports = (predicate: (exp: ValueExport) => boolean) => ValueExport[];
 export type ResolveExportUses = (exp: ValueExport) => { imp: Import, aliasPath: string[] }[];
 
+export type DependencyResolutionWarning = AmbiguousImportWarning | ImportWarning;
+export type AmbiguousImportWarning = { type: "dependency-resolution-ambiguous-import", message: string, imp: ESMImportDefault, exp: Export };
+
 export type ResolveDependencies = {
     filterImports: FilterImports,
     filterExports: FilterExports,
     resolveExportUses: ResolveExportUses,
+    warnings: DependencyResolutionWarning[],
 };
 
 type Star = "*" & { __type: "star" };
@@ -31,15 +42,19 @@ export const resolveDependencies = (project: Project, resolveModule: ResolveModu
     const allExports: Export[] = [];
     const exportsPerFile = new Map<string, Export[]>();
 
+    const warnings: DependencyResolutionWarning[] = [];
+
     files.forEach(file => {
-        allImports.push(...identifyImports(file));
+        const { imports, warnings: importWarnings } = identifyImports(file);
+        warnings.push(...importWarnings);
+        allImports.push(...imports);
 
         const exports = identifyExports(file);
         allExports.push(...exports);
         exportsPerFile.set(file.getFilePath(), exports);
     });
 
-    const resolveExport = (exportName: string | Star, moduleSpecifier: string, isDefaultImport: boolean, file: SourceFile) => {
+    const resolveExport = (exportName: string | Star, moduleSpecifier: string, originalImport: Import, file: SourceFile) => {
         const target = resolveModule(moduleSpecifier, file.getFilePath());
         if (!target) { return []; } // Targeting an external file, ignore
 
@@ -60,25 +75,45 @@ export const resolveDependencies = (project: Project, resolveModule: ResolveModu
 
                     case "esm-named-reexport":
                         return starRequested || exp.alias === exportName
-                            ? resolveExport(exp.referencedExport, exp.moduleSpecifier, false, target)
+                            ? resolveExport(exp.referencedExport, exp.moduleSpecifier, originalImport, target)
                                 .map(e => ({ ...e, aliasPath: starRequested ? [exp.alias, ...e.aliasPath] : e.aliasPath }))
                             : [];
 
                     case "esm-reexport-star-as-named":
                         return starRequested || exp.alias === exportName
-                            ? resolveExport(star, exp.moduleSpecifier, false, target)
+                            ? resolveExport(star, exp.moduleSpecifier, originalImport, target)
                                 .map(e => ({ ...e, aliasPath: starRequested ? [exp.alias, ...e.aliasPath] : e.aliasPath }))
                             : [];
 
                     case "esm-reexport-star":
-                        return resolveExport(exportName, exp.moduleSpecifier, false, target);
+                        return resolveExport(exportName, exp.moduleSpecifier, originalImport, target);
 
                     case "cjs-overwrite":
-                        if (isDefaultImport) { throw new Error(`Ambiguous default ESM import of a CJS export. Reading ${ describeNode(exp.exported) }`); }
+                        if (isESMImportDefault(originalImport)) {
+                            warnings.push({
+                                type: "dependency-resolution-ambiguous-import",
+                                message: `Ambiguous default ESM import of a CJS export.\nImport: ${ describeNode(originalImport.identifier) }\nExport file: ${ exp.exported.getSourceFile().getFilePath() }`,
+                                imp: originalImport,
+                                exp,
+                            });
+
+                            return [];
+                        }
+
                         return [{ exp, key: star, aliasPath: [] }];
 
                     case "cjs-prop":
-                        if (isDefaultImport) { throw new Error(`Ambiguous default ESM import of a CJS export. Reading ${ describeNode(exp.exported) }`); }
+                        if (isESMImportDefault(originalImport)) {
+                            warnings.push({
+                                type: "dependency-resolution-ambiguous-import",
+                                message: `Ambiguous default ESM import of a CJS export.\nImport: ${ describeNode(originalImport.identifier) }\nExport file: ${ exp.exported.getSourceFile().getFilePath() }`,
+                                imp: originalImport,
+                                exp,
+                            });
+
+                            return [];
+                        }
+
                         return starRequested || exp.alias === exportName
                             ? [{ exp, key: exp.alias, aliasPath: starRequested ? [exp.alias] : [] }]
                             : [];
@@ -105,16 +140,16 @@ export const resolveDependencies = (project: Project, resolveModule: ResolveModu
     allImports.forEach(imp => {
         switch (imp.type) {
             case "esm-default":
-                return resolveExport("default", imp.moduleSpecifier, true, getImportFile(imp)).forEach(e => set(getExportFile(e.exp), e.key, imp, e.aliasPath));
+                return resolveExport("default", imp.moduleSpecifier, imp, getImportFile(imp)).forEach(e => set(getExportFile(e.exp), e.key, imp, e.aliasPath));
 
             case "esm-named":
-                return resolveExport(imp.referencedExport, imp.moduleSpecifier, false, getImportFile(imp)).forEach(e => set(getExportFile(e.exp), e.key, imp, e.aliasPath));
+                return resolveExport(imp.referencedExport, imp.moduleSpecifier, imp, getImportFile(imp)).forEach(e => set(getExportFile(e.exp), e.key, imp, e.aliasPath));
 
             case "cjs-import":
             case "esm-equals":
             case "esm-dynamic":
             case "esm-namespace":
-                return resolveExport(star, imp.moduleSpecifier, false, getImportFile(imp)).forEach(e => set(getExportFile(e.exp), e.key, imp, e.aliasPath));
+                return resolveExport(star, imp.moduleSpecifier, imp, getImportFile(imp)).forEach(e => set(getExportFile(e.exp), e.key, imp, e.aliasPath));
 
             default:
                 return unexpected(imp);
@@ -141,5 +176,7 @@ export const resolveDependencies = (project: Project, resolveModule: ResolveModu
                     return unexpected(exp);
             }
         },
+
+        get warnings() { return [...warnings]; },
     };
 };

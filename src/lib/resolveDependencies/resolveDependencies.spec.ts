@@ -1,7 +1,7 @@
 import { Project } from "ts-morph";
 import { resolveDependencies } from "./resolveDependencies";
 import { ResolveModule } from "../resolveModule/resolveModule";
-import { Export, isESMDefaultExport, isESMNamedExport } from "./identifyExports";
+import { Export, isCJSOverwriteExport, isCJSPropExport, isESMDefaultExport, isESMNamedExport } from "./identifyExports";
 import { Import, isCJSImport, isESMImportDefault, isESMImportNamed, isESMImportNamespace } from "./identifyImports";
 import { atLeastOne } from "../guards";
 
@@ -319,7 +319,7 @@ describe("Resolve dependencies", () => {
             expect(aliasPath).toEqual([]);
         });
 
-        it("should throw if ESM default import is used to import a CJS overwrite export", async () => {
+        it("should warn if ESM default import is used to import a CJS overwrite export", async () => {
             // This behaviour depends on the project configuration and I'm choosing to ignore resolving it for now
             project.createSourceFile("/source.js", `
                 module.exports = 1;
@@ -327,10 +327,17 @@ describe("Resolve dependencies", () => {
             project.createSourceFile("/consumer.js", `
                 import one from "/source.js";
             `);
-            expect(() => resolveDependencies(project, resolveModule)).toThrowError(/Ambiguous default ESM import of a CJS export/);
+
+            const { warnings } = resolveDependencies(project, resolveModule);
+            expect(warnings).toHaveLength(1);
+
+            const [warning] = atLeastOne(warnings);
+            if (warning.type !== "dependency-resolution-ambiguous-import") { throw new Error("Expected an ambiguous import warning"); }
+            expect(isESMImportDefault(warning.imp)).toBe(true);
+            expect(isCJSOverwriteExport(warning.exp)).toBe(true);
         });
 
-        it("should throw if ESM default import is used to import a CJS prop export", async () => {
+        it("should warn if ESM default import is used to import a CJS prop export", async () => {
             // This behaviour depends on the project configuration and I'm choosing to ignore resolving it for now
             project.createSourceFile("/source.js", `
                 module.exports.prop = 1;
@@ -338,7 +345,14 @@ describe("Resolve dependencies", () => {
             project.createSourceFile("/consumer.js", `
                 import one from "/source.js";
             `);
-            expect(() => resolveDependencies(project, resolveModule)).toThrowError(/Ambiguous default ESM import of a CJS export/);
+
+            const { warnings } = resolveDependencies(project, resolveModule);
+            expect(warnings).toHaveLength(1);
+
+            const [warning] = atLeastOne(warnings);
+            if (warning.type !== "dependency-resolution-ambiguous-import") { throw new Error("Expected an ambiguous import warning"); }
+            expect(isESMImportDefault(warning.imp)).toBe(true);
+            expect(isCJSPropExport(warning.exp)).toBe(true);
         });
     });
 });
