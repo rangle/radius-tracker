@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
+import "./checkEngine";
+
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { isPromise } from "util/types";
 import { readFileSync, statSync } from "fs";
 import ignore from "ignore";
 import { sync as globSync } from "glob";
@@ -12,7 +13,7 @@ import { detectSnowflakes } from "./detectSnowflakes/detectSnowflakes";
 import { resolveDependencies } from "./resolveDependencies/resolveDependencies";
 import { setupModuleResolution } from "./resolveModule/resolveModule";
 import { FindUsageWarning, setupFindUsages, Usage } from "./findUsages/findUsages";
-import { objectKeys } from "./guards";
+import { isPromiseLike, objectKeys } from "./guards";
 import { getImportNode } from "./resolveDependencies/identifyImports";
 
 const args = yargs(hideBin(process.argv))
@@ -30,7 +31,7 @@ const args = yargs(hideBin(process.argv))
     .demandCommand()
     .parse();
 
-if (isPromise(args)) { throw new Error("Unexpected promise"); }
+if (isPromiseLike(args)) { throw new Error("Implementation error: Unexpected promise from yargs"); }
 
 const pathToProject = args.path;
 if (!pathToProject || typeof pathToProject !== "string") { throw new Error("Please specify a path to the codebase that should be investigated"); }

@@ -82,5 +82,8 @@ module.exports = {
             "enforceForNewInMemberExpressions": true,
             "enforceForFunctionPrototypeMethods": true,
         }],
+
+        // Spacing in template curlies
+        "template-curly-spacing": ["error", "always"],
     },
 };

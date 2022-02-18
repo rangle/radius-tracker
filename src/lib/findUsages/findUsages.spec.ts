@@ -23,7 +23,7 @@ describe("findUsages", () => { // TODO: test traces
             ? node.getDescendants().filter(d => d.getKindName() === expectedKind).reverse().find(d => d.getPos() <= expectedPosition && d.getEnd() >= expectedPosition)
             : node.getDescendantAtPos(expectedPosition);
 
-        const cantFindError = new Error(`Can't find a descendant ${ expectedKind ? `of king ${ expectedKind }` : ""}in ${ node } in position ${ symbolPosition }`);
+        const cantFindError = new Error(`Can't find a descendant ${ expectedKind ? `of king ${ expectedKind }` : "" }in ${ node } in position ${ symbolPosition }`);
         if (!identified && node.getDescendants().length === 0) {
             if (expectedKind && node.getKindName() !== expectedKind) { throw cantFindError; }
             return node;

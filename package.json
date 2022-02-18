@@ -1,6 +1,6 @@
 {
   "name": "radius-tracker",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Find usages of React components in the codebase",
   "main": "index.js",
   "types": "index.d.ts",
@@ -8,8 +8,9 @@
   "scripts": {
     "test": "npm run task test",
     "build": "npm run task build",
-    "task": "npm install --no-audit && ts-node -T src/tasks/tasks.ts",
-    "cli": "ts-node -T ./src/lib/cli.ts"
+    "task": "npm run prep && ts-node -T src/tasks/tasks.ts",
+    "cli": "npm run prep && ts-node -T ./src/lib/cli.ts",
+    "prep": "npm install --no-audit && ts-node -T src/lib/checkEngine.ts"
   },
   "keywords": [],
   "author": {
@@ -26,6 +27,7 @@
   "dependencies": {
     "glob": "^7.2.0",
     "ignore": "^5.2.0",
+    "semver": "^7.3.5",
     "ts-morph": "^13.0.2",
     "typescript": "^4.5.4",
     "yargs": "^17.3.1"
@@ -37,6 +39,7 @@
     "@types/glob": "^7.2.0",
     "@types/jest": "^27.4.0",
     "@types/node": "^17.0.10",
+    "@types/semver": "^7.3.9",
     "@types/yargs": "^17.0.8",
     "@typescript-eslint/eslint-plugin": "^5.11.0",
     "@typescript-eslint/parser": "^5.11.0",
@@ -46,5 +49,8 @@
     "tasklauncher": "^0.0.7",
     "ts-node": "^10.5.0",
     "ts-toolbelt": "^9.6.0"
+  },
+  "engines": {
+    "node": ">=14.17.0"
   }
 }

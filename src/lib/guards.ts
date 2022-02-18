@@ -31,4 +31,9 @@ export const isNotUndefined = isNot(isUndefined);
 
 export const isEither = <Guards extends Guard<any, unknown>[]>(...guards: Guards) => (val: GuardArrInput<Guards>): val is GuardArrOutput<Guards> => guards.some(g => g(val));
 
+export const hasProp = <P extends string>(prop: P) => <T>(val: T): val is T & { [p in P]: unknown } => Boolean(val) && typeof val === "object" && prop in val;
+
+const hasThen = hasProp("then");
+export const isPromiseLike = (val: unknown): val is PromiseLike<unknown> => hasThen(val) && typeof val.then === "function";
+
 export const unexpected = (val: never): never => { throw new Error(`Unexpected value: ${ inspect(val) }`); };

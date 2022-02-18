@@ -6,7 +6,7 @@ import { identity } from "../lib/guards";
 
 
 type LintOptions = { fix?: boolean };
-const lint = (opt: LintOptions) => cmd(`eslint src --ext .ts --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : ""}`);
+const lint = (opt: LintOptions) => cmd(`eslint src --ext .ts --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
 
 type JestOptions = { foreground?: boolean };  // TODO: coverage
 const jest = (opt: JestOptions) => cmd("jest ./src", opt.foreground ? () => Promise.resolve() : undefined);
