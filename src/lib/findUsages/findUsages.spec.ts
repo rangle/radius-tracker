@@ -877,7 +877,7 @@ describe("findUsages", () => { // TODO: test traces
     });
 
     it("should handle function expression prop as a target", async () => {
-        project.createSourceFile("tst.jsx", `
+        project.createSourceFile("tst.js", `
             console.log({ 
                 //      #------- FunctionExpression
                 render: function () {}
@@ -887,12 +887,40 @@ describe("findUsages", () => { // TODO: test traces
     });
 
     it("should handle function declaration as a target", async () => {
-        project.createSourceFile("tst.jsx", `
+        project.createSourceFile("tst.js", `
             //       #--
             function tst() {};
             
             //          *--
             console.log(tst);
+        `);
+        assertUsagesFound();
+    });
+
+    it("should handle overloaded function declaration as a target", async () => {
+        project.createSourceFile("tst.ts", `
+            function tst(val: number): number;
+            function tst(val: string): string;
+            //       #--
+            function tst<T>(val: T): T { return val; }
+            
+            //          *--
+            console.log(tst);
+        `);
+        assertUsagesFound();
+    });
+
+    it("should handle usage within overloaded function", async () => {
+        project.createSourceFile("tst.ts", `
+            //    #-----
+            const target = 1;
+            
+            
+            function tst(val: number): number;
+            function tst(val: string): string;
+            
+            //                                        *-----
+            function tst<T>(val: T): T { return val + target; }
         `);
         assertUsagesFound();
     });

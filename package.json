@@ -8,7 +8,8 @@
   "scripts": {
     "test": "npm run task test",
     "build": "npm run task build",
-    "task": "npm install --no-audit && ts-node -T src/tasks/tasks.ts"
+    "task": "npm install --no-audit && ts-node -T src/tasks/tasks.ts",
+    "cli": "ts-node -T ./src/lib/cli.ts"
   },
   "keywords": [],
   "author": {

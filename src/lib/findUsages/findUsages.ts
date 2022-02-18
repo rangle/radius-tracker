@@ -170,6 +170,7 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     if (Node.isArrayLiteralExpression(parent)) { return false; }
     if (Node.isObjectLiteralExpression(parent)) { return false; }
     if (Node.isJsxClosingElement(parent)) { return false; }
+    if (Node.isFunctionDeclaration(parent)) { return false; } // This happens for function overloads in TS
 
     if (Node.isJsxExpression(parent)) { return true; }
     if (Node.isJsxOpeningElement(parent)) { return true; }

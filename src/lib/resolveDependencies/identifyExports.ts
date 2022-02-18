@@ -70,7 +70,8 @@ const isExportOrExportable = isEither(Node.isExportable, isExport);
 function findExportedDeclaration(symbol: TSSymbol, file: SourceFile) {
     const declarations = symbol.getDeclarations()
         .filter(declaration => isExportOrExportable(declaration) || declaration.getAncestors().some(isExportOrExportable))
-        .filter(declaration => declaration.getSourceFile() === file);
+        .filter(declaration => declaration.getSourceFile() === file)
+        .filter(declaration => !Node.isFunctionDeclaration(declaration) || declaration.hasBody());
 
     if (declarations.length === 0) { return null; }
     if (declarations.length > 1) {

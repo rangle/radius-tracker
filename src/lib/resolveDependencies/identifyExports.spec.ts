@@ -256,4 +256,21 @@ describe("Identify exports", () => {
         `));
         expect(exports).toHaveLength(0);
     });
+
+    it("should identify an implementation of an overloaded function in TS", async () => {
+        const exports = identifyExports(project.createSourceFile("tst.ts", `
+            export function tst(val: number): number;
+            export function tst(val: string): string;
+            export function tst<T>(val: T): T { return val; }
+        `));
+
+        expect(exports).toHaveLength(1);
+
+        const exp = atLeastOne(exports)[0];
+        if (!isESMNamedExport(exp)) { throw new Error("Expected an ESM named export"); }
+        expect(exp.alias).toBe("tst");
+
+        if (!Node.isFunctionDeclaration(exp.exported)) { throw new Error("Expected a function declaration"); }
+        expect(exp.exported.hasBody()).toBe(true);
+    });
 });
