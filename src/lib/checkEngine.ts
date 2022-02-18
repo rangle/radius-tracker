@@ -1,7 +1,7 @@
 import { satisfies } from "semver";
 
 const getPkg = () => {
-    try { return require("package.json"); } // In build
+    try { return require("./package.json"); } // In build
     catch (_ignore) { return require("../../package.json"); } // In dev
 };
 const requiredVersion = getPkg().engines.node;
