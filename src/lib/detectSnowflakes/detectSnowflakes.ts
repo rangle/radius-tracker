@@ -89,6 +89,8 @@ export function detectSnowflakes(file: SourceFile): ReadonlyArray<ComponentDecla
 
 function variableIdentifierIfExists(node: Node): Identifier | undefined {
     const parent = node.getParent();
+    if (Node.isCallExpression(parent)) { return variableIdentifierIfExists(parent); }
+
     if (!Node.isVariableDeclaration(parent)) { return undefined; }
     const nameNode = parent.getNameNode();
 

@@ -1,5 +1,5 @@
 import { Project, SourceFile } from "ts-morph";
-import { ResolveModule } from "../resolveModule/resolveModule";
+import { isModuleResolutionWarning, ModuleResolutionWarning, ResolveModule } from "../resolveModule/resolveModule";
 import {
     Export,
     getExportFile,
@@ -21,7 +21,7 @@ export type FilterImports = (predicate: (imp: Import) => boolean) => Import[];
 export type FilterExports = (predicate: (exp: ValueExport) => boolean) => ValueExport[];
 export type ResolveExportUses = (exp: ValueExport) => { imp: Import, aliasPath: string[] }[];
 
-export type DependencyResolutionWarning = AmbiguousImportWarning | ImportWarning;
+export type DependencyResolutionWarning = AmbiguousImportWarning | ImportWarning | ModuleResolutionWarning;
 export type AmbiguousImportWarning = { type: "dependency-resolution-ambiguous-import", message: string, imp: ESMImportDefault, exp: Export };
 
 export type ResolveDependencies = {
@@ -35,6 +35,7 @@ type Star = "*" & { __type: "star" };
 const star: Star = "*" as never;
 const isStar = (val: string): val is Star => val === "*";
 
+// TODO: resolving dependencies needs optimization. Doing `.forEachDescendantAsArray()` over and over is expensive.
 export const resolveDependencies = (project: Project, resolveModule: ResolveModule): ResolveDependencies => {
     const files = project.getSourceFiles();
 
@@ -57,6 +58,11 @@ export const resolveDependencies = (project: Project, resolveModule: ResolveModu
     const resolveExport = (exportName: string | Star, moduleSpecifier: string, originalImport: Import, file: SourceFile) => {
         const target = resolveModule(moduleSpecifier, file.getFilePath());
         if (!target) { return []; } // Targeting an external file, ignore
+
+        if (isModuleResolutionWarning(target)) {
+            warnings.push(target);
+            return [];
+        }
 
         const starRequested = isStar(exportName);
         const fileExports = exportsPerFile.get(target.getFilePath()) ?? [];

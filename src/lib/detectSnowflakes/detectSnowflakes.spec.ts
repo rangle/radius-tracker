@@ -111,4 +111,14 @@ describe("detectSnowflakes", () => {
         `));
         expect(snowflakes).toHaveLength(0);
     });
+
+    it("should detect an identifier after the snowflake is wrapped with forwardRef", async () => {
+        const snowflakes = detectSnowflakes(project.createSourceFile("tst.js", `
+            const Snwflk = React.forwardRef((props, forwardedRef) => <div/>);
+        `));
+        expect(snowflakes).toHaveLength(1);
+        expect(Node.isArrowFunction(atLeastOne(snowflakes)[0].declaration)).toBe(true);
+        expect(Node.isIdentifier(atLeastOne(snowflakes)[0].identifier)).toBe(true);
+        expect(atLeastOne(snowflakes)[0].identifier?.getText()).toBe("Snwflk");
+    });
 });

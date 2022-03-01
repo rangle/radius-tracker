@@ -62,9 +62,9 @@ describe("findUsages", () => { // TODO: test traces
         const target = identifyTarget(targetComment, "#");
         const { usages, warnings } = findUsages(target);
 
-        expect(usages).toHaveLength(expectedUsages.length);
         expect(warnings).toHaveLength(0); // Should have no warnings
 
+        expect(usages).toHaveLength(expectedUsages.length);
         expectedUsages.forEach(expectedUsage => {
             const usage = usages.find(({ use }) => expectedUsage === use);
             if (!usage) { throw new Error(`Expected to find usage at ${ describeNode(expectedUsage) }`); }
@@ -248,11 +248,12 @@ describe("findUsages", () => { // TODO: test traces
             //    #-----
             const target = 1;
            
-            const obj = { target, wrong: 1 };
+            const obj = { wrapper: { target, wrong: 2 }, wrong: 1 };
             console.log(obj.wrong); // Ignored
+            console.log(obj.wrapper.wrong); // Ignored
            
-            //              *----- 
-            console.log(obj.target);
+            //                      *----- 
+            console.log(obj.wrapper.target);
         `);
         assertUsagesFound();
     });
@@ -321,6 +322,18 @@ describe("findUsages", () => { // TODO: test traces
             
             //              *-----
             console.log(obj.target); // Usage
+        `);
+        assertUsagesFound();
+    });
+
+    it("should follow default assignment in object destructuring", async () => {
+        project.createSourceFile("tst.js", `
+            //    #-----
+            const target = 1;
+            const { prop = target } = {};
+            
+            //          *---
+            console.log(prop); // Usage
         `);
         assertUsagesFound();
     });
@@ -452,6 +465,18 @@ describe("findUsages", () => { // TODO: test traces
         assertUsagesFound();
     });
 
+    it("should follow default assignment in array destructuring", async () => {
+        project.createSourceFile("tst.js", `
+            //    #-----
+            const target = 1;
+            const [tgt = target] = [];
+            
+            //          *--
+            console.log(tgt);
+        `);
+        assertUsagesFound();
+    });
+
     it("should follow object element access with string literal expression", async () => {
         project.createSourceFile("tst.js", `
             //    #-----
@@ -509,11 +534,12 @@ describe("findUsages", () => { // TODO: test traces
         project.createSourceFile("tst.js", `
             //    #-----
             const target = 1;
-            const obj = { target, wrong: 1 };
+            const obj = { wrapper: { target, wrong: 2 }, wrong: 1 };
             console.log(obj["wrong"]); // Ignored
-            
-            //             *--------- ElementAccessExpression
-            console.log(obj["target"]);
+            console.log(obj["wrapper"]["wrong"]); // Ignored
+           
+            //                        *--------- ElementAccessExpression 
+            console.log(obj["wrapper"]["target"]);
         `);
         assertUsagesFound();
     });
@@ -525,6 +551,19 @@ describe("findUsages", () => { // TODO: test traces
             
             //                      *-----
             const Consumer = () => <Target>Hey</Target>;
+        `);
+        assertUsagesFound();
+    });
+
+    xit("should detect usage of an identifier in property access in JSX open tag", async () => { // TODO: unignore & fix
+        project.createSourceFile("/source.jsx", `
+            //           #-----
+            export const Target = ({ children }) => <div>{ children }</div>;
+        `);
+        project.createSourceFile("/target.jsx", `
+            import * as Source from "/source.jsx";
+            //                             *-----
+            const Consumer = () => <Source.Target>Hey</Source.Target>;
         `);
         assertUsagesFound();
     });
@@ -553,13 +592,25 @@ describe("findUsages", () => { // TODO: test traces
         assertUsagesFound();
     });
 
-    it("should detect usage in JSX props tag", async () => {
+    it("should detect usage in JSX props", async () => {
         project.createSourceFile("tst.jsx", `
             //    #-----
             const Target = () => <div/>;
             
             //                                     *-----
             const Consumer = () => <div somethin={ Target }/>;
+        `);
+        assertUsagesFound();
+    });
+
+    it("should detect usage in JSX spread assignment", async () => {
+        project.createSourceFile("tst.jsx", `
+            //    #-----
+            const Target = () => <div/>;
+            const set = { Target };
+            
+            //                              *--
+            const Consumer = () => <div {...set}/>;
         `);
         assertUsagesFound();
     });
@@ -630,8 +681,7 @@ describe("findUsages", () => { // TODO: test traces
         project.createSourceFile("tst.jsx", `
             //    #-----
             const Target = () => <div/>;
-            const subset = { Target };
-            const set = { prop: subset }
+            const set = { prop: { Target } }
             
             //                                               *---
             const Consumer = () => <Dynamic components={ set.prop }/>;
@@ -984,7 +1034,7 @@ describe("findUsages", () => { // TODO: test traces
 
     it("should find usages through function calls", async () => {
         project.createSourceFile("tst.jsx", `
-            //    #--------
+            //    #-----
             const Target = () => <div/>
             const getComponent = () => Target;
             
@@ -994,6 +1044,119 @@ describe("findUsages", () => { // TODO: test traces
               //      *
               return <C/>;
             }
+        `);
+        assertUsagesFound();
+    });
+
+    it("should ignore usage in typeof inside type annotations", async () => {
+        project.createSourceFile("tst.tsx", `
+            type PropType = { prop: string };
+
+            //    #-----
+            const Target = (props: PropType) => <div/>
+            
+            const Uses = (props: React.ComponentProps<typeof Target>) => {
+                //      *-----
+                return <Target {...props}/>;
+            };
+        `);
+        assertUsagesFound();
+    });
+
+    it("should ignore usage in qualified name access inside type annotations", async () => {
+        project.createSourceFile("tst.tsx", `
+            type PropType = { prop: string };
+
+            //    #-----
+            const Target = (props: PropType) => <div/>
+            const Set = { Target };
+            
+            const Uses = (props: React.ComponentProps<typeof Set.Target>) => {
+                //      *-----
+                return <Target {...props}/>;
+            };
+        `);
+        assertUsagesFound();
+    });
+
+    it("should support traversing type casts", async () => {
+        project.createSourceFile("tst.tsx", `
+            //    #-----
+            const Target = () => <div/>;
+            
+            //                   *-----
+            const Uses = (() => <Target/>) as React.ReactComponent;
+            
+            const Rename = Target as React.ReactComponent;
+            
+            //          *-----
+            console.log(Rename);
+        `);
+        assertUsagesFound();
+    });
+
+    it("should support components used as class property declarations", async () => {
+        project.createSourceFile("tst.tsx", `
+            //    #-----
+            const Target = () => <div/>;
+            
+            class Smth {
+                //                      *-----
+                targetRenderer = () => <Target/>;
+                render() { return this.targetRenderer(); }
+            }
+        `);
+        assertUsagesFound();
+    });
+
+    it("should support class used as an interface", async () => {
+        project.createSourceFile("tst.tsx", `
+            //    #-----
+            class Target {}
+            let a: Target;
+            let b: Target[];
+            let c: Target | null;
+            let d: Target & {};
+            let e: (item: Target) => void;
+            
+            class F {
+                private prop: Target,
+            }
+            
+            let g: {[id: string]: Target};
+        `);
+        assertUsagesFound();
+    });
+
+    it("should ignore usage in javascript typeof expressions", async () => {
+        project.createSourceFile("tst.tsx", `
+            //    #--
+            const tgt = 1;
+            console.log(typeof tgt);
+        `);
+        assertUsagesFound();
+    });
+
+    xit("should consider usage in JSX tag final, avoid tracing parent component usage", async () => { // TODO: unignore & fix
+        project.createSourceFile("tst.tsx", `
+            //    #-----
+            const Target = () => <div/>;
+            
+            //                    *-----
+            const Usage = (() => <Target/>);
+            const ParentUsage = () => <Usage/>; // Ignored 
+        `);
+        assertUsagesFound();
+    });
+
+    it("should traverse tagged template expressions", async () => {
+        project.createSourceFile("tst.jsx", `
+            //    #-----
+            const Target = () => <div/>
+            const Styled = styled(Target)\`background: red;\`;
+            
+            //                  *-----
+            const Uses = () => <Styled/>;
         `);
         assertUsagesFound();
     });

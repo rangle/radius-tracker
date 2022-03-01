@@ -1,0 +1,29 @@
+diff --git a/node_modules/react-scripts/config/webpack.config.js b/node_modules/react-scripts/config/webpack.config.js
+index 2b1b3bb..a6e0b20 100644
+--- a/node_modules/react-scripts/config/webpack.config.js
++++ b/node_modules/react-scripts/config/webpack.config.js
+@@ -321,6 +321,9 @@ module.exports = function (webpackEnv) {
+         // Support React Native Web
+         // https://www.smashingmagazine.com/2016/08/a-glimpse-into-the-future-with-react-native-for-web/
+         'react-native': 'react-native-web',
++        // Force resolution of code-block-writer.
++        // This creates a path pointing to esm configuration of the module.
++        'code-block-writer$': path.join(require.resolve("code-block-writer"), "..", "..", "esm", "mod.js"),
+         // Allows for better profiling with ReactDevTools
+         ...(isEnvProductionProfile && {
+           'react-dom$': 'react-dom/profiling',
+@@ -328,6 +331,14 @@ module.exports = function (webpackEnv) {
+         }),
+         ...(modules.webpackAliases || {}),
+       },
++      fallback: {
++        // Make assert, buffer, and util fallbacks available in browser
++        util: require.resolve('util'),
++        path: require.resolve('path-browserify'),
++        assert: require.resolve('assert'),
++        buffer: require.resolve('buffer'),
++        stream: require.resolve('stream-browserify'),
++      },
+       plugins: [
+         // Prevents users from importing files from outside of src/ (or node_modules/).
+         // This often causes confusion because we only process files within src/ with babel.

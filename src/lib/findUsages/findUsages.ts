@@ -89,7 +89,7 @@ const followExport: FollowStrategy = (target, dependencies) => {
     const itemImports = dependencies.resolveExportUses(exp);
     return itemImports.map(({ imp, aliasPath }): ResolvedTarget => ({
         node: getImportNode(imp),
-        trace: [{ type: "export", exp }, { type: "import", imp }],
+        trace: [{ type: "import", imp }, { type: "export", exp }],
         aliasPath: [...aliasPath, ...target.aliasPath],
         isPotentialUsage: false, // Import is not a usage on its own
     }));
@@ -121,6 +121,12 @@ const isIdentifierDefinitionParent = (node: Node, warn: Warn): boolean => {
     if (Node.isArrowFunction(node)) { return false; }
     if (Node.isReturnStatement(node)) { return false; }
     if (Node.isExpressionWithTypeArguments(node)) { return false; } // `extends <node>` clause in class declaration
+    if (Node.isTypeQuery(node)) { return false; }
+    if (Node.isQualifiedName(node)) { return false; }
+    if (Node.isTypeOfExpression(node)) { return false; }
+    if (Node.isJsxSpreadAttribute(node)) { return false; }
+    if (Node.isAsExpression(node)) { return false; } // Type casts aren't used in identifier definitions
+    if (Node.isTypeReference(node)) { return false; } // Type references aren't used in identifier definitions
 
     // These are valid definition parents
     if (Node.isBindingElement(node)) { return true; }
@@ -171,6 +177,10 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     if (Node.isObjectLiteralExpression(parent)) { return false; }
     if (Node.isJsxClosingElement(parent)) { return false; }
     if (Node.isFunctionDeclaration(parent)) { return false; } // This happens for function overloads in TS
+    if (Node.isTypeQuery(parent)) { return false; } // Usage in type queries shouldn't count
+    if (Node.isQualifiedName(parent)) { return false; } // Usage in type queries shouldn't count
+    if (Node.isTypeOfExpression(parent)) { return false; } // Usage in `typeof <x>` JS expression shouldn't count
+    if (Node.isTypeReference(parent)) { return false; } // Usage in `typeof <x>` JS expression shouldn't count
 
     if (Node.isJsxExpression(parent)) { return true; }
     if (Node.isJsxOpeningElement(parent)) { return true; }
@@ -190,6 +200,9 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     if (Node.isArrowFunction(parent)) { return true; }
     if (Node.isReturnStatement(parent)) { return true; }
     if (Node.isExpressionWithTypeArguments(parent)) { return true; } // `extends <node>` clause in class declaration
+    if (Node.isJsxSpreadAttribute(parent)) { return true; }
+    if (Node.isAsExpression(parent)) { return true; }
+    if (Node.isBindingElement(parent)) { return true; }
 
     warn({
         type: "find-usage-unhandled-node-type",
@@ -222,6 +235,7 @@ const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn):
 
     const parent = node.getParent();
     if (!parent) { return []; }
+    if (Node.isTypeReference(parent)) { return []; } // If parent is a type reference — we're moving into type side of things, and shouldn't follow
 
     if (Node.isPropertyAssignment(node) || Node.isShorthandPropertyAssignment(node)) {
         return [{ node: parent, aliasPath: [node.getName(), ...aliasPath], trace: [{ type: "ref", node }], isPotentialUsage: false }];
@@ -249,6 +263,10 @@ const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn):
         return []; // Don't follow the left side of a binary expression
     }
 
+    if (Node.isTypeQuery(parent) || Node.isQualifiedName(parent)) {
+        return []; // Don't follow into the types
+    }
+
     return [{ node: parent, aliasPath, trace: [], isPotentialUsage: false }];
 };
 
@@ -266,7 +284,6 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
     if (Node.isNamespaceImport(node)) { return []; }
     if (Node.isExportSpecifier(node)) { return []; }
     if (Node.isNamedExports(node)) { return []; }
-    if (Node.isBindingElement(node)) { return []; }
     if (Node.isPropertyAssignment(node)) { return []; }
     if (Node.isShorthandPropertyAssignment(node)) { return []; }
     if (Node.isObjectLiteralExpression(node)) { return []; }
@@ -290,6 +307,12 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
     if (Node.isExpressionWithTypeArguments(node)) { return []; }
     if (Node.isHeritageClause(node)) { return []; }
     if (Node.isFunctionExpression(node)) { return []; }
+    if (Node.isTaggedTemplateExpression(node)) { return []; }
+    if (Node.isAsExpression(node)) { return []; }
+    if (Node.isTypeOfExpression(node)) { return []; }
+    if (Node.isPropertyDeclaration(node)) { return []; }
+    if (Node.isJsxSpreadAttribute(node)) { return []; }
+    if (Node.isTypeReference(node)) { return []; }
 
     if (Node.isParenthesizedExpression(node)) {
         // TODO: When is stepping into the parentheses useful?
@@ -416,6 +439,10 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
         return [{ node: initializer, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
     }
 
+    if (Node.isBindingElement(node)) {
+        return [{ node: node.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+    }
+
     if (Node.isParameterDeclaration(node)) {
         return [{ node: node.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
     }
@@ -454,7 +481,7 @@ function follow(dependencies: ResolveDependencies, target: ResolvedTarget, origi
             // TODO: refactor to avoid recursion in favour of cycle
             return follow(dependencies, {
                 ...nextTarget,
-                trace: [...target.trace, ...nextTarget.trace],
+                trace: [...nextTarget.trace, ...target.trace],
             }, originalTarget, nextVisited, warn);
         })
         .reduce((a, b) => [...a, ...b], []);

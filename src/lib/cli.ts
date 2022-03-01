@@ -58,14 +58,25 @@ const projectFiles = globSync(`**/*{${ SUPPORTED_FILE_TYPES.join(",") }}`, {
 
 const tsconfigPath = "tsconfig.json";
 const jsconfigPath = "jsconfig.json";
+const isTsProject = statSync(tsconfigPath, { throwIfNoEntry: false });
 const config: ProjectOptions =
-      statSync(tsconfigPath, { throwIfNoEntry: false }) ? { tsConfigFilePath: tsconfigPath }
+      isTsProject ? { tsConfigFilePath: tsconfigPath }
     : statSync(jsconfigPath, { throwIfNoEntry: false }) ? { compilerOptions: { ...JSON.parse(readFileSync(jsconfigPath, "utf8")).compilerOptions ?? {}, allowJs: true } }
     : { compilerOptions: { allowJs: true } };
 
 const project = new Project(config);
-projectFiles.forEach(f => project.addSourceFileAtPath(f));
-const snowflakes = project.getSourceFiles().map(detectSnowflakes).reduce((a, b) => [...a, ...b], []);
+const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;
+
+const jsRe = /\.jsx?$/;
+const yarnRe = /\/\.yarn\//;
+projectFiles
+    .filter(f => !yarnRe.test(f))
+    .filter(f => allowJs || !jsRe.test(f))
+    .forEach(f => project.addSourceFileAtPath(f));
+const snowflakes = project.getSourceFiles()
+    .filter(f => !testFileRe.test(f.getFilePath()))
+    .map(detectSnowflakes)
+    .reduce((a, b) => [...a, ...b], []);
 
 const dependencies = resolveDependencies(project, setupModuleResolution(project, process.cwd()));
 const findUsages = setupFindUsages(dependencies);

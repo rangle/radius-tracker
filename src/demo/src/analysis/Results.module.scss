@@ -1,0 +1,64 @@
+.warnings {
+  background: #F36868;
+  padding: 1rem;
+}
+.warningsToggle {
+  cursor: pointer;
+  text-decoration: underline dashed black;
+}
+.warning {
+  margin: .5rem 0;
+  font-size: 1rem;
+  overflow: scroll;
+}
+
+.componentDefinition {
+  margin: 2rem 0 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.componentCodeSnippet {
+  font-size: 1.3rem;
+  margin: .5rem .1rem 1rem;
+  padding: .5rem;
+  background: #e3e3e3;
+  overflow: scroll;
+}
+.componentCodeSnippet, .usageCodeSnippet {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+.usagesToggle {
+  cursor: pointer;
+  text-decoration: underline dashed black;
+}
+.usagesList {
+  list-style-type: none;
+  padding: 0;
+}
+.usage {
+  margin-top: .3rem;
+  font-size: 1.3rem;
+  overflow: scroll;
+}
+.usageCodeSnippet {
+  margin: .1rem;
+  font-size: 1.3rem;
+  display: inline-block;
+  vertical-align: baseline;
+  padding-right: .3em;
+}
+
+.traceToggle {
+  cursor: pointer;
+  text-decoration: underline dashed black;
+  padding-left: .3rem;
+  font-size: 1rem;
+}
+.traceList {
+  list-style-type: none;
+}
+.trace {
+  margin-top: .3rem;
+}
