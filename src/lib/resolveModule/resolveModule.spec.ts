@@ -75,10 +75,11 @@ describe("Resolve module", () => {
         expect(resolveModule("target.js", "dependant.js")).toBe(targetSource);
     });
 
-    it("should throw if file requested by relative path can not be resolved", async () => {
+    it("should warn if file requested by relative path can not be resolved", async () => {
         project.createSourceFile("dependant.js", `
             import { HELLO } from "./target.js";
         `);
-        expect(() => resolveModule("./target.js", "dependant.js")).toThrowError(/Could not resolve/);
+        const res = resolveModule("./target.js", "dependant.js");
+        expect(res).toHaveProperty("type", "module-resolution");
     });
 });

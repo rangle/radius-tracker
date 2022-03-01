@@ -1,14 +1,19 @@
 # dependencies
-node_modules
+/node_modules
 
 # Build
-build
+/build
+
+# Demo related artifacts
+/src/demo/node_modules
+/src/demo/package-lock.json
+/src/demo/build
 
 # Misc
 npm-debug.log*
 
 # Webstorm config
-.idea
+/.idea
 
 # TS incremental build data
-.tsbuildinfo
+/.tsbuildinfo

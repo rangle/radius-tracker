@@ -1,8 +1,15 @@
 import { Project, SourceFile, ts } from "ts-morph";
 import { SUPPORTED_FILE_TYPES } from "../supportedFileTypes";
+import { hasProp } from "../guards";
 
-export type ResolveModule = (moduleName: string, containingFile: string) => SourceFile | null;
-export const setupModuleResolution = (project: Project, cwd: string): ResolveModule => { // TODO: produce module resolution warnings
+export type ResolveModule = (moduleName: string, containingFile: string) => SourceFile | ModuleResolutionWarning | null;
+export type ModuleResolutionWarning = { type: "module-resolution", message: string };
+
+const hasType = hasProp("type");
+const moduleResolutionType: ModuleResolutionWarning["type"] = "module-resolution";
+export const isModuleResolutionWarning = (val: unknown): val is ModuleResolutionWarning => hasType(val) && val.type === moduleResolutionType;
+
+export const setupModuleResolution = (project: Project, cwd: string): ResolveModule => {
     const realpath = project.getModuleResolutionHost().realpath;
     if (!realpath) { throw new Error("realpath not defined on module resolution host"); }
 
@@ -22,10 +29,14 @@ export const setupModuleResolution = (project: Project, cwd: string): ResolveMod
                 return null;
             }
 
-            throw new Error(`Could not resolve '${ moduleName }' referenced from '${ containingFile }'\nFailed resolutions: ${ JSON.stringify(resolved, null, 4) }`);
+            const warning: ModuleResolutionWarning = {
+                type: "module-resolution",
+                message: `Could not resolve '${ moduleName }' referenced from '${ containingFile }'\nFailed resolutions: ${ JSON.stringify(resolved, null, 4) }`,
+            };
+            return warning;
         }
 
-        if (resolvedModule.isExternalLibraryImport) { return null; } // Assume unresolved files are external to the project
+        if (resolvedModule.isExternalLibraryImport) { return null; }
         return project.getSourceFileOrThrow(resolvedModule.resolvedFileName);
     };
 };

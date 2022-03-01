@@ -1,9 +1,6 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-
 import { work, exec, cmd } from "tasklauncher";
-import { identity } from "../lib/guards";
-
 
 type LintOptions = { fix?: boolean };
 const lint = (opt: LintOptions) => cmd(`eslint src --ext .ts --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
@@ -14,14 +11,22 @@ const jest = (opt: JestOptions) => cmd("jest ./src", opt.foreground ? () => Prom
 const typecheck = cmd("tsc -p tsconfig.json --noEmit");
 
 const test = work(jest, typecheck, lint);
-const buildTasks = work(cmd("cp package.json README.md build"))
-    .after(cmd("tsc -b tsconfig-lib-release.json"))
-    .after(test);
+
+type BuildOptions = { test?: boolean };
+const buildTasks = (opt: BuildOptions) => {
+    const build = work(cmd("cp package.json README.md build"))
+        .after(
+            cmd("tsc -b tsconfig-lib-cjs.json"),
+            cmd("tsc -b tsconfig-lib-esm.json"),
+            cmd("tsc -b tsconfig-lib-types.json"),
+        );
+
+    return opt.test ? build.after(test) : build;
+};
 
 yargs(hideBin(process.argv))
     .command(
         "test", "Execute the test suite",
-        identity,
         () => exec(test),
     )
     .command(
@@ -35,12 +40,16 @@ yargs(hideBin(process.argv))
     )
     .command(
         "jest", "Run jest",
-        identity,
         () => exec(jest, { foreground: true }),
     )
     .command(
         "build", "Build the package",
-        () => exec(buildTasks),
+        args => args
+            .option("test", {
+                type: "boolean",
+                default: true,
+            }),
+        args => exec(buildTasks, args),
     )
     .strictCommands()
     .strictOptions()

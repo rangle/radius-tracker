@@ -2,7 +2,6 @@
 import { inspect } from "util";
 import { Function, Misc } from "ts-toolbelt";
 
-export const identity = <T>(val: T) => val;
 export const atLeastOne = <T>(val: ArrayLike<T>): [T, ...T[]] => {
     if (val.length < 1) { throw new Error("Expected at least one value"); }
     return val as any;
