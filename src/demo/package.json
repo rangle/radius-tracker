@@ -16,5 +16,6 @@
   },
   "dependencies": {
     "radius-tracker": "../../build"
-  }
+  },
+  "homepage": "https://rangle.github.io/radius-tracker/"
 }
