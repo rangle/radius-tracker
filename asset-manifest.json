@@ -1,14 +1,14 @@
 {
   "files": {
-    "main.css": "/static/css/main.0091c7c0.css",
-    "main.js": "/static/js/main.d3182600.js",
-    "static/js/worker.80fd41dd.worker.js": "/static/js/worker.80fd41dd.worker.js",
-    "index.html": "/index.html",
-    "main.0091c7c0.css.map": "/static/css/main.0091c7c0.css.map",
-    "main.d3182600.js.map": "/static/js/main.d3182600.js.map"
+    "main.css": "/radius-tracker/static/css/main.0091c7c0.css",
+    "main.js": "/radius-tracker/static/js/main.fbd6253a.js",
+    "static/js/worker.5e64db53.worker.js": "/radius-tracker/static/js/worker.5e64db53.worker.js",
+    "index.html": "/radius-tracker/index.html",
+    "main.0091c7c0.css.map": "/radius-tracker/static/css/main.0091c7c0.css.map",
+    "main.fbd6253a.js.map": "/radius-tracker/static/js/main.fbd6253a.js.map"
   },
   "entrypoints": [
     "static/css/main.0091c7c0.css",
-    "static/js/main.d3182600.js"
+    "static/js/main.fbd6253a.js"
   ]
 }
