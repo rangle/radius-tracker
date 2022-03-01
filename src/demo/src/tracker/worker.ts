@@ -49,8 +49,6 @@ async function track(githubUrl: TrackerRequest, reportProgress: (message: string
         onProgress: progEvent => reportProgress(`Cloning ${ repoInfo.data.clone_url }: ${ progEvent.phase } ${ [progEvent.loaded, progEvent.total].filter(Boolean).join("/") }`),
     });
 
-    console.log(cloneFs.toJSON());
-
     reportProgress("Setting up TS compiler");
     const tsconfigPath = "/tsconfig.json";
     const jsconfigPath = "/jsconfig.json";
