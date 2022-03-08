@@ -25,7 +25,8 @@ jobs:
         cache: ${{ !env.ACT && 'yarn' || '' }}
     - name: Setup Yarn
       run: npm install -g yarn
-    - run: yarn test
+    - name: Run Tests
+      run: yarn test
     - name: Uninstall Yarn
       if: always()
       run: npm uninstall -g yarn
