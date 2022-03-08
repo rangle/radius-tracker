@@ -21,14 +21,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Use Node.js ${{ matrix.node-version }}
-      if: ${{ !env.ACT }}
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - name: Use Node.js ${{ matrix.node-version }}
-      if: ${{ env.ACT }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ matrix.node-version }}
+        cache: ${{ !env.ACT && 'npm' || '' }}
     - run: npm test
