@@ -22,5 +22,10 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: ${{ matrix.node-version }}
-        cache: ${{ !env.ACT && 'npm' || '' }}
-    - run: npm test
+        cache: ${{ !env.ACT && 'yarn' || '' }}
+    - name: Setup Yarn
+      run: npm install -g yarn
+    - run: yarn test
+    - name: Uninstall Yarn
+      if: always()
+      run: npm uninstall -g yarn
