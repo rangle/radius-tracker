@@ -1,86 +1,88 @@
 {
-  "name": "radius-tracker",
-  "version": "0.0.8",
-  "description": "Find usages of React components in the codebase",
-  "bin": "./cjs/cli.js",
-  "main": "./cjs/index.js",
-  "module": "./esm/index.js",
-  "types": "./types/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./esm/index.js",
-      "require": "./cjs/index.js",
-      "types": "./types/index.d.ts"
+    "name": "radius-tracker",
+    "version": "0.0.8",
+    "description": "Find usages of React components in the codebase",
+    "bin": "./cjs/cli.js",
+    "main": "./cjs/index.js",
+    "module": "./esm/index.js",
+    "types": "./types/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./esm/index.js",
+            "require": "./cjs/index.js",
+            "types": "./types/index.d.ts"
+        }
+    },
+    "scripts": {
+        "postinstall": "patch-package",
+        "test": "npm run task test",
+        "build": "npm run task build",
+        "task": "npm run prep && ts-node -T ./src/tasks/tasks.ts",
+        "cli": "npm run prep && ts-node -T ./src/lib/cli.ts",
+        "prep": "npm install --no-audit && ts-node -T src/lib/checkEngine.ts",
+        "demo-start": "npm run demo-prep && ts-node -T ./src/demo/run-script.ts start",
+        "demo-build": "npm run demo-prep && ts-node -T ./src/demo/run-script.ts build",
+        "demo-prep": "npm run task -- build --no-test && npm i --prefix src/demo"
+    },
+    "keywords": [],
+    "author": {
+        "name": "Arseny Smoogly",
+        "email": "arseny@smoogly.ru",
+        "url": "http://smoogly.ru"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/rangle/radius-tracker.git"
+    },
+    "homepage": "https://github.com/rangle/radius-tracker#readme",
+    "dependencies": {
+        "glob": "^7.2.0",
+        "ignore": "^5.2.0",
+        "semver": "^7.3.5",
+        "ts-morph": "^13.0.2",
+        "typescript": "^4.5.4",
+        "yargs": "^17.3.1"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.16.10",
+        "@babel/preset-env": "^7.16.11",
+        "@babel/preset-typescript": "^7.16.7",
+        "@isomorphic-git/lightning-fs": "^4.4.1",
+        "@octokit/rest": "^18.12.0",
+        "@types/glob": "^7.2.0",
+        "@types/isomorphic-git__lightning-fs": "^4.4.2",
+        "@types/jest": "^27.4.0",
+        "@types/node": "^17.0.10",
+        "@types/react": "^17.0.39",
+        "@types/react-dom": "^17.0.11",
+        "@types/semver": "^7.3.9",
+        "@types/yargs": "^17.0.8",
+        "@typescript-eslint/eslint-plugin": "^5.11.0",
+        "@typescript-eslint/parser": "^5.11.0",
+        "assert": "^2.0.0",
+        "babel-jest": "^27.4.6",
+        "buffer": "^6.0.3",
+        "eslint": "^8.9.0",
+        "isomorphic-git": "^1.12.1",
+        "jest": "^27.4.7",
+        "memfs": "^3.4.1",
+        "patch-package": "^6.4.7",
+        "path-browserify": "^1.0.1",
+        "react": "^17.0.2",
+        "react-dom": "^17.0.2",
+        "react-scripts": "5.0.0",
+        "sass": "^1.49.8",
+        "stream-browserify": "^3.0.0",
+        "tasklauncher": "^0.0.7",
+        "ts-node": "^10.5.0",
+        "ts-toolbelt": "^9.6.0",
+        "util": "^0.12.4",
+        "worker-loader": "^3.0.8"
+    },
+    "engines": {
+        "node": ">=14.17.0",
+        "npm": "please-use-yarn",
+        "yarn": ">=1.22.0  <2.x"
     }
-  },
-  "scripts": {
-    "postinstall": "patch-package",
-    "test": "npm run task test",
-    "build": "npm run task build",
-    "task": "npm run prep && ts-node -T ./src/tasks/tasks.ts",
-    "cli": "npm run prep && ts-node -T ./src/lib/cli.ts",
-    "prep": "npm install --no-audit && ts-node -T src/lib/checkEngine.ts",
-    "demo-start": "npm run demo-prep && ts-node -T ./src/demo/run-script.ts start",
-    "demo-build": "npm run demo-prep && ts-node -T ./src/demo/run-script.ts build",
-    "demo-prep": "npm run task -- build --no-test && npm i --prefix src/demo"
-  },
-  "keywords": [],
-  "author": {
-    "name": "Arseny Smoogly",
-    "email": "arseny@smoogly.ru",
-    "url": "http://smoogly.ru"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/rangle/radius-tracker.git"
-  },
-  "homepage": "https://github.com/rangle/radius-tracker#readme",
-  "dependencies": {
-    "glob": "^7.2.0",
-    "ignore": "^5.2.0",
-    "semver": "^7.3.5",
-    "ts-morph": "^13.0.2",
-    "typescript": "^4.5.4",
-    "yargs": "^17.3.1"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.16.10",
-    "@babel/preset-env": "^7.16.11",
-    "@babel/preset-typescript": "^7.16.7",
-    "@isomorphic-git/lightning-fs": "^4.4.1",
-    "@octokit/rest": "^18.12.0",
-    "@types/glob": "^7.2.0",
-    "@types/isomorphic-git__lightning-fs": "^4.4.2",
-    "@types/jest": "^27.4.0",
-    "@types/node": "^17.0.10",
-    "@types/react": "^17.0.39",
-    "@types/react-dom": "^17.0.11",
-    "@types/semver": "^7.3.9",
-    "@types/yargs": "^17.0.8",
-    "@typescript-eslint/eslint-plugin": "^5.11.0",
-    "@typescript-eslint/parser": "^5.11.0",
-    "assert": "^2.0.0",
-    "babel-jest": "^27.4.6",
-    "buffer": "^6.0.3",
-    "eslint": "^8.9.0",
-    "isomorphic-git": "^1.12.1",
-    "jest": "^27.4.7",
-    "memfs": "^3.4.1",
-    "patch-package": "^6.4.7",
-    "path-browserify": "^1.0.1",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-scripts": "5.0.0",
-    "sass": "^1.49.8",
-    "stream-browserify": "^3.0.0",
-    "tasklauncher": "^0.0.7",
-    "ts-node": "^10.5.0",
-    "ts-toolbelt": "^9.6.0",
-    "util": "^0.12.4",
-    "worker-loader": "^3.0.8"
-  },
-  "engines": {
-    "node": ">=14.17.0"
-  }
 }
