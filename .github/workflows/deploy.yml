@@ -26,4 +26,5 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4.2.5
         with:
           branch: gh-pages
-          folder: src/demo/build # The folder the action should deploy.
+          folder: src/demo/build
+          token: ${{secrets.DEPLOY_TOKEN}}
