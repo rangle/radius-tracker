@@ -19,7 +19,7 @@
   },
   "homepage": "https://rangle.github.io/radius-tracker/",
   "engines": {
-    "npm": "please-use-yarn",
+    "npm": "Please use yarn instead of npm",
     "yarn": ">= 1.22.10 && < 2.x"
   }
 }
