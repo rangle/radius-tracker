@@ -5,7 +5,8 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
@@ -23,7 +24,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: ${{ !env.ACT && 'yarn' || '' }}
-      - name: Setup Yarn 🚧
-        run: ${{ env.ACT && 'npm install -g yarn' || '' }}
+      - name: Install Yarn 🚧
+        if: ${{ env.ACT }}
+        run: npm install -g yarn
       - name: Run Tests 🦺
         run: yarn test
