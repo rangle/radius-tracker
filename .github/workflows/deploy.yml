@@ -27,4 +27,4 @@ jobs:
         with:
           branch: gh-pages
           folder: src/demo/build
-          token: ${{secrets.DEPLOY_TOKEN}}
+          token: ${{secrets.GITHUB_TOKEN}}
