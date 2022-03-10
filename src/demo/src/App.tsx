@@ -33,7 +33,7 @@ function App() {
 
                 <form onSubmit={ onSubmit } className={ styles.form }>
                     <input type="text" value={ currentUrl } onChange={ onUrlChange } className={ styles.input }
-                           placeholder="Github repo url"/>
+                        placeholder="Github repo url"/>
                     <button className={ styles.button }>Analyze</button>
                 </form>
                 <div className={ styles.suggestion }>

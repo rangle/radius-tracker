@@ -61,8 +61,8 @@ const jsconfigPath = "jsconfig.json";
 const isTsProject = statSync(tsconfigPath, { throwIfNoEntry: false });
 const config: ProjectOptions =
       isTsProject ? { tsConfigFilePath: tsconfigPath }
-    : statSync(jsconfigPath, { throwIfNoEntry: false }) ? { compilerOptions: { ...JSON.parse(readFileSync(jsconfigPath, "utf8")).compilerOptions ?? {}, allowJs: true } }
-    : { compilerOptions: { allowJs: true } };
+      : statSync(jsconfigPath, { throwIfNoEntry: false }) ? { compilerOptions: { ...JSON.parse(readFileSync(jsconfigPath, "utf8")).compilerOptions ?? {}, allowJs: true } }
+      : { compilerOptions: { allowJs: true } };
 
 const project = new Project(config);
 const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;

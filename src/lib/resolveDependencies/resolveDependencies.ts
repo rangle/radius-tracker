@@ -126,7 +126,7 @@ export const resolveDependencies = (project: Project, resolveModule: ResolveModu
 
                     default:
                         return unexpected(exp);
-               }
+                }
             })
             .reduce((a, b) => [...a, ...b], []);
     };

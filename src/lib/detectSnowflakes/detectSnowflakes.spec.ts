@@ -5,7 +5,7 @@ import { atLeastOne } from "../guards";
 describe("detectSnowflakes", () => {
     let project: Project;
     beforeEach(async () => {
-       project = new Project({ useInMemoryFileSystem: true });
+        project = new Project({ useInMemoryFileSystem: true });
     });
 
     it("should detect a snowflake functional component", async () => {
