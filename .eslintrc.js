@@ -92,6 +92,6 @@ module.exports = {
         "indent": ["error", 4, { "SwitchCase": 1 , "flatTernaryExpressions": true }],
 
         //JSON Trailing comma
-        "json/trailing-comma" : ["error", "always"],
+        "json/trailing-comma" : "warn",
     },
 };
