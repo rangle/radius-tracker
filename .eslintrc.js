@@ -4,10 +4,12 @@ module.exports = {
     parser: "@typescript-eslint/parser",
     plugins: [
         "@typescript-eslint",
+        "json",
     ],
     extends: [
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
+        "plugin:json/recommended",
     ],
     "rules": {
         // Usages of `{}` and `object` look fine in this repo
@@ -88,5 +90,8 @@ module.exports = {
 
         // Indent
         "indent": ["error", 4, { "SwitchCase": 1 , "flatTernaryExpressions": true }],
+
+        //JSON Trailing comma
+        "json/trailing-comma" : ["error", "always"],
     },
 };
