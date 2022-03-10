@@ -66,8 +66,8 @@ async function track(githubUrl: TrackerRequest, reportProgress: (message: string
     const isTsProject = isFile(cloneFs, tsconfigPath);
     const config: ProjectOptions =
           isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
-              : isFile(cloneFs, jsconfigPath) ? { compilerOptions: { ...JSON.parse(readFile(cloneFs, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
-                  : { compilerOptions: { allowJs: true } };
+          : isFile(cloneFs, jsconfigPath) ? { compilerOptions: { ...JSON.parse(readFile(cloneFs, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
+          : { compilerOptions: { allowJs: true } };
 
     const project = new Project({ ...config, useInMemoryFileSystem: true });
     const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;
