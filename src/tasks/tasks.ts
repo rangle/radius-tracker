@@ -3,7 +3,7 @@ import { hideBin } from "yargs/helpers";
 import { work, exec, cmd } from "tasklauncher";
 
 type LintOptions = { fix?: boolean };
-const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx,.json --ignore-path .gitignore --max-warnings 0${opt.fix ? " --fix" : ""}`);
+const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
 
 type JestOptions = { foreground?: boolean };  // TODO: coverage
 const jest = (opt: JestOptions) => cmd("jest ./src", opt.foreground ? () => Promise.resolve() : undefined);
