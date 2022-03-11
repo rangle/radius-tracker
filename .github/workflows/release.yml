@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0 # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
+          persist-credentials: false # https://github.com/semantic-release/semantic-release/blob/2b94bb4e0967c705ab92deace342f9fecb02909d/docs/recipes/ci-configurations/github-actions.md#pushing-packagejson-changes-to-a-master-branch
       - name: Use Node.js  🚧
         uses: actions/setup-node@v2
         with:
@@ -31,4 +32,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release --dry-run
+        run: npx semantic-release --dry-run --debug
