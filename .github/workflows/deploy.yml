@@ -4,7 +4,7 @@
 name: Build and Deploy
 
 on:
-  push:
+  pull:
     branches:
       - main
 
@@ -33,4 +33,4 @@ jobs:
         with:
           branch: gh-pages
           folder: src/demo/build
-          token: ${{secrets.GITHUB_TOKEN}}
+          token: ${{ secrets.GITHUB_TOKEN }}
