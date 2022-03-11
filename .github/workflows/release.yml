@@ -1,0 +1,34 @@
+# This workflow release a new semantic version of npm package
+# For more information see: https://github.com/semantic-release/semantic-release/blob/2b94bb4e0967c705ab92deace342f9fecb02909d/docs/recipes/ci-configurations/github-actions.md
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # https://github.com/actions/checkout#fetch-all-history-for-all-tags-and-branches
+      - name: Use Node.js  🚧
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ secrets.NODE_VERSION }}
+          cache: ${{ !env.ACT && 'yarn' || '' }}
+      - name: Install Yarn 🚧
+        if: ${{ env.ACT }}
+        run: npm install -g yarn
+      - name: Build Package 🛠
+        run: yarn build
+      - name: Release 🚀
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release --dry-run

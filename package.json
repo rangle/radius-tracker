@@ -84,5 +84,8 @@
   "engines": {
     "node": ">=14.17.0",
     "yarn": ">= 1.22.10 && < 2.x"
+  },
+  "release": {
+    "branches": ["main", "npm-package-deploy"]
   }
 }
