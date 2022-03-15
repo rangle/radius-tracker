@@ -10,7 +10,6 @@ if (!satisfies(process.version, requiredVersion)) {
     throw new Error(`Unsupported Node version. Expected ${ requiredVersion }, got ${ process.version }`);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 if (process.env.npm_execpath && !/\byarn\b/.test(process.env.npm_execpath)) {
     throw new Error("Please use yarn instead of npm");
 }
