@@ -7,6 +7,7 @@
 # Demo related artifacts
 /src/demo/node_modules
 /src/demo/package-lock.json
+/src/demo/yarn.lock
 /src/demo/build
 
 # Misc
