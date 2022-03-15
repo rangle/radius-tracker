@@ -1,0 +1,17 @@
+storage: /tmp/verdaccio-storage
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+
+packages:
+  'radius-tracker':
+    access: $all
+    publish: $anonymous
+
+  '**':
+    access: $all
+    proxy: npmjs
+
+logs:
+  - { type: stdout, format: pretty, level: warn }
