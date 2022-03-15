@@ -4,21 +4,20 @@
 name: Build and Deploy
 
 on:
-  pull:
+  push:
     branches:
       - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v2
       - name: Install Yarn 🚧
         if: ${{ env.ACT }}
         run: npm install -g yarn
-      - name: Build Demo 🛠
+      - name: Build 🛠
         run: yarn demo-build
       - name: Install Rsync 📚
         if: ${{ env.ACT }}
@@ -28,4 +27,4 @@ jobs:
         with:
           branch: gh-pages
           folder: src/demo/build
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{secrets.GITHUB_TOKEN}}
