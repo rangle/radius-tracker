@@ -1,4 +1,6 @@
-storage: /tmp/verdaccio-storage
+store:
+  memory:
+    limit: 1000
 
 uplinks:
   npmjs:
