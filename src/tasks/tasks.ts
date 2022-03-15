@@ -14,7 +14,7 @@ const test = work(jest, typecheck, lint);
 
 type BuildOptions = { test?: boolean };
 const buildTasks = (opt: BuildOptions) => {
-    const build = work(cmd("cp package.json README.md build"))
+    const build = work(cmd("./src/tasks/setup_package_meta.sh"))
         .after(
             cmd("tsc -b tsconfig-lib-cjs.json"),
             cmd("tsc -b tsconfig-lib-esm.json"),
