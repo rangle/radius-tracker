@@ -83,7 +83,6 @@
   },
   "engines": {
     "node": ">=14.17.0",
-    "npm": "Please use yarn instead of npm",
     "yarn": ">= 1.22.10 && < 2.x"
   }
 }
