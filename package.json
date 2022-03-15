@@ -38,7 +38,6 @@
   },
   "homepage": "https://github.com/rangle/radius-tracker#readme",
   "dependencies": {
-    "command-exists": "^1.2.9",
     "glob": "^7.2.0",
     "ignore": "^5.2.0",
     "semver": "^7.3.5",
@@ -52,7 +51,6 @@
     "@babel/preset-typescript": "^7.16.7",
     "@isomorphic-git/lightning-fs": "^4.4.1",
     "@octokit/rest": "^18.12.0",
-    "@types/command-exists": "^1.2.0",
     "@types/glob": "^7.2.0",
     "@types/isomorphic-git__lightning-fs": "^4.4.2",
     "@types/jest": "^27.4.0",
