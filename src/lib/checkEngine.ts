@@ -11,9 +11,7 @@ if (!satisfies(process.version, requiredVersion)) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const isNpmNotYarn = Boolean(process.env.npm_execpath) && !/\byarn\b/.test(process.env.npm_execpath!);
-
-if (isNpmNotYarn) {
+if (process.env.npm_execpath && !/\byarn\b/.test(process.env.npm_execpath)) {
     throw new Error("Please use yarn instead of npm");
 }
 
