@@ -1,6 +1,6 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { work, exec, cmd } from "tasklauncher";
+import { work, exec, cmd, detectLog } from "tasklauncher";
 
 type LintOptions = { fix?: boolean };
 const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
@@ -21,7 +21,15 @@ const buildTasks = (opt: BuildOptions) => {
             cmd("tsc -b tsconfig-lib-types.json"),
         );
 
-    return opt.test ? build.after(test) : build;
+    if (!opt.test) { return build; }
+
+    const launchLocalRegistry = work(cmd("verdaccio -l 8080 -c ./src/tasks/verdaccio.yml", detectLog("http://localhost:8080")))
+        .after(cmd("rm -rf /tmp/verdaccio-storage"));
+
+    return work(cmd("./src/tasks/execute_from_local_registry.sh")).after(
+        launchLocalRegistry,
+        work(cmd("./src/tasks/publish_to_local_registry.sh")).after(launchLocalRegistry, build, test),
+    );
 };
 
 yargs(hideBin(process.argv))
