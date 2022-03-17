@@ -32,7 +32,7 @@
     "url": "http://smoogly.ru"
   },
   "contributors": [
-    { "name" : "Pavel Ivanov", "email" : "pablospaniard@gmail.com" }
+    { "name" : "Pavel Ivanov", "email" : "pablospaniard@gmail.com", "url": "https://pablospaniard.dev" }
   ],
   "license": "MIT",
   "repository": {
