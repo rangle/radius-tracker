@@ -18,3 +18,9 @@ npm-debug.log*
 
 # TS incremental build data
 /.tsbuildinfo
+
+# Lambda related artifacts
+/src/lambda/node_modules
+/src/lambda/package-lock.json
+/src/lambda/yarn.lock
+/src/lambda/build
