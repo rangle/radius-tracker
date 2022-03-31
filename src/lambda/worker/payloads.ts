@@ -1,4 +1,9 @@
-export type TrackerRequest = string; // Github repo url
+import { APIGatewayProxyEvent } from "aws-lambda";
+import { Volume } from "memfs";
+
+export interface TrackerEvent extends APIGatewayProxyEvent {
+  body: string, // Github repo url
+}
 
 export type NodeRef = {
   text: string,
@@ -34,7 +39,8 @@ export type TrackerResponse = {
   snowflakeUsages: TrackerUsageData[],
 };
 
-type TrackerResponseSuccess = { type: "success", payload: TrackerResponse };
-type TrackerResponseFailure = { type: "failure", error: string };
-type TrackerResponseProgress = { type: "progress", message: string };
-export type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure | TrackerResponseProgress;
+type TrackerResponseSuccess = { statusCode: 200, payload: TrackerResponse };
+type TrackerResponseFailure = { statusCode: 400, message: string };
+export type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
+
+export type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;

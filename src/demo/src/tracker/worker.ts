@@ -29,7 +29,7 @@ const octokit = new Octokit();
 async function track(githubUrl: TrackerRequest, reportProgress: (message: string) => void): Promise<TrackerResponse> {
     const url = new URL(githubUrl);
     if (url.hostname !== "github.com") { throw new Error("github.com url expected"); }
-    const [,owner, repo] = url.pathname.split("/");
+    const [, owner, repo] = url.pathname.split("/");
     if (!owner || !repo) { throw new Error("Url does not point to a github repo"); }
 
     reportProgress(`Fetching repo metadata for https://github.com/${ owner }/${ repo }`);
@@ -65,9 +65,9 @@ async function track(githubUrl: TrackerRequest, reportProgress: (message: string
 
     const isTsProject = isFile(cloneFs, tsconfigPath);
     const config: ProjectOptions =
-          isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
-          : isFile(cloneFs, jsconfigPath) ? { compilerOptions: { ...JSON.parse(readFile(cloneFs, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
-          : { compilerOptions: { allowJs: true } };
+        isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
+            : isFile(cloneFs, jsconfigPath) ? { compilerOptions: { ...JSON.parse(readFile(cloneFs, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
+                : { compilerOptions: { allowJs: true } };
 
     const project = new Project({ ...config, useInMemoryFileSystem: true });
     const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;

@@ -87,6 +87,6 @@ module.exports = {
         "template-curly-spacing": ["error", "always"],
 
         // Indent
-        "indent": ["error", 4, { "SwitchCase": 1 , "flatTernaryExpressions": true }],
+        "indent": ["error", 4, { "SwitchCase": 1 , "flatTernaryExpressions": false }],
     },
 };
