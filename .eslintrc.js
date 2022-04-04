@@ -9,7 +9,8 @@ module.exports = {
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
     ],
-    "rules": {
+    ignorePatterns: ["src/lambda/*.js"],
+    rules: {
         // Usages of `{}` and `object` look fine in this repo
         "@typescript-eslint/ban-types": ["error", {
             "extendDefaults": true,

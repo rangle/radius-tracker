@@ -1,5 +1,6 @@
 import {
     APIGatewayProxyResult,
+    APIGatewayProxyEvent,
 } from "aws-lambda";
 import { InMemoryFileSystemHost, Node, Project, ProjectOptions } from "ts-morph";
 import { Octokit } from "@octokit/rest";
@@ -19,7 +20,50 @@ import {
     SUPPORTED_FILE_TYPES,
 } from "radius-tracker";
 
-import { NodeRef, TrackerEvent, TrackerResponse, TrackerResponseMessage, MemfsVolume } from "./payloads";
+
+interface TrackerEvent extends APIGatewayProxyEvent {
+    body: string, // Github repo url
+}
+
+type NodeRef = {
+    text: string,
+    startLine: number,
+    endLine: number,
+    filepath: string,
+    context?: string,
+    url: string,
+};
+
+type TrackerWarning = {
+    type: string,
+    message: string,
+    node?: NodeRef,
+};
+
+type TrackerUsageData = {
+    target: NodeRef,
+    usages: TrackerUsage[],
+};
+type TrackerUsage = {
+    use: NodeRef,
+    trace: TrackerTrace[],
+    aliasPath: string[],
+};
+type TrackerTrace = {
+    type: string,
+    node: NodeRef,
+};
+
+type TrackerResponse = {
+    warnings: TrackerWarning[],
+    snowflakeUsages: TrackerUsageData[],
+};
+
+type TrackerResponseSuccess = { statusCode: 200, payload: TrackerResponse };
+type TrackerResponseFailure = { statusCode: 400, message: string };
+export type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
+
+export type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
 
 
 global.Buffer = Buffer; // TODO: provide via webpack globals
@@ -29,34 +73,6 @@ const yarnDirRe = /\/\.yarn\//;
 const jsRe = /\.jsx?$/;
 
 const octokit = new Octokit();
-
-const responseEvent = (response: TrackerResponseMessage) => {
-    const headers = {
-        "Content-Type": "application/json",
-    };
-
-    switch (response.statusCode) {
-        case 200:
-            return {
-                statusCode: response.statusCode,
-                headers,
-                body: JSON.stringify(response.payload),
-            };
-        case 400:
-            return {
-                statusCode: response.statusCode,
-                headers,
-                body: JSON.stringify(response.message),
-            };
-
-        default:
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify("Something went wrong, please try again."),
-            };
-    }
-};
 
 exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> => {
     const githubUrl = event.body;
@@ -125,7 +141,7 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     const findUsages = setupFindUsages(dependencies);
     const findUsageWarnings: FindUsageWarning[] = [];
 
-    const snowflakeUsageData = snowflakes.map((snowflake, i) => {
+    const snowflakeUsageData = snowflakes.map(snowflake => {
 
         const target = snowflake.identifier ?? snowflake.declaration;
         const { usages, warnings } = findUsages(target);
@@ -194,4 +210,35 @@ function findF(fs: MemfsVolume, path: string): string[] {
         if (stat.isDirectory()) { files.push(...findF(fs, filepath)); }
     }
     return files;
+}
+
+function responseEvent(response: TrackerResponseMessage): APIGatewayProxyResult {
+    const headers = {
+        "Content-Type": "application/json",
+    };
+
+    switch (response.statusCode) {
+        case 200:
+            console.log("200");
+            return {
+                statusCode: response.statusCode,
+                headers,
+                body: JSON.stringify(response.payload),
+            };
+        case 400:
+            console.log("400");
+            return {
+                statusCode: response.statusCode,
+                headers,
+                body: JSON.stringify(response.message),
+            };
+
+        default:
+            console.log("500");
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify("Something went wrong, please try again."),
+            };
+    }
 }

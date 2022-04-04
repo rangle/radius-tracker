@@ -9,7 +9,7 @@
     "allowSyntheticDefaultImports": false,
     "noUnusedLocals": true,
     "noEmit": false,
-    "outDir": "build",
+    "outDir": "./",
     "isolatedModules": true,
     "downlevelIteration": false,
     "moduleResolution": "node",
@@ -26,9 +26,9 @@
     "forceConsistentCasingInFileNames": true,
   },
   "include": [
-    "worker"
+    "index.ts"
   ],
   "exclude": [
-    "build"
+    "./index.js"
   ]
 }
