@@ -5,7 +5,7 @@ import { InMemoryFileSystemHost, Node, Project, ProjectOptions } from "ts-morph"
 import { Octokit } from "@octokit/rest";
 import { Buffer } from "buffer";
 import git from "isomorphic-git";
-import gitHttp from "isomorphic-git/http/web";
+import http from "isomorphic-git/http/node";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 import { Volume } from "memfs";
 
@@ -78,13 +78,12 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     const cloneFs = Volume.fromJSON({});
     await git.clone({
         fs: { promises: cloneFs.promises },
-        http: gitHttp,
+        http,
         dir: "/",
         url: repoInfo.data.clone_url,
         depth: 1,
         singleBranch: true,
         noTags: true,
-        corsProxy: "https://cors.isomorphic-git.org", // TODO: get rid of cors proxy
     });
 
     const tsconfigPath = "/tsconfig.json";
