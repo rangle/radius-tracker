@@ -136,15 +136,12 @@ resource "aws_api_gateway_integration" "_" {
 resource "aws_api_gateway_deployment" "_" {
   rest_api_id = aws_api_gateway_rest_api._.id
 
-  variables = {
-    deployed_at = "${timestamp()}"
-  }
-
-
   depends_on = [
     aws_api_gateway_integration._,
   ]
-
+  variables = {
+    deployed_at = "${timestamp()}"
+  }
   lifecycle {
     create_before_destroy = true
   }
@@ -154,5 +151,12 @@ resource "aws_api_gateway_stage" "_" {
   deployment_id = aws_api_gateway_deployment._.id
   rest_api_id   = aws_api_gateway_rest_api._.id
   stage_name    = "v1"
+}
+
+module "cors" {
+  source = "../cors"
+
+  api_id          = aws_api_gateway_rest_api._.id
+  api_resource_id = aws_api_gateway_resource._.id
 }
 
