@@ -83,3 +83,76 @@ resource "aws_iam_role_policy_attachment" "_" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_lambda_permission" "apigw" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function._.arn
+  principal     = "apigateway.amazonaws.com"
+
+  # The /*/* portion grants access from any method on any resource
+  # within the API Gateway "REST API".
+  source_arn = "${aws_api_gateway_rest_api._.execution_arn}/*/*"
+}
+
+
+# -----------------------------------------------------------------------------
+# Resources: Lambda
+# -----------------------------------------------------------------------------
+
+resource "aws_api_gateway_rest_api" "_" {
+  name        = "lambda-api"
+  description = "Proxy to handle requests to lambda"
+}
+
+resource "aws_api_gateway_resource" "_" {
+  rest_api_id = aws_api_gateway_rest_api._.id
+  parent_id   = aws_api_gateway_rest_api._.root_resource_id
+  path_part   = "{proxy+}"
+}
+
+resource "aws_api_gateway_method" "_" {
+  rest_api_id   = aws_api_gateway_rest_api._.id
+  resource_id   = aws_api_gateway_resource._.id
+  http_method   = "POST"
+  authorization = "NONE"
+  request_parameters = {
+    "method.request.path.proxy" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "_" {
+  rest_api_id             = aws_api_gateway_rest_api._.id
+  resource_id             = aws_api_gateway_resource._.id
+  http_method             = aws_api_gateway_method._.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function._.invoke_arn
+
+  request_parameters = {
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
+}
+
+resource "aws_api_gateway_deployment" "_" {
+  rest_api_id = aws_api_gateway_rest_api._.id
+
+  variables = {
+    deployed_at = "${timestamp()}"
+  }
+
+
+  depends_on = [
+    aws_api_gateway_integration._,
+  ]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_api_gateway_stage" "_" {
+  deployment_id = aws_api_gateway_deployment._.id
+  rest_api_id   = aws_api_gateway_rest_api._.id
+  stage_name    = "v1"
+}
+
