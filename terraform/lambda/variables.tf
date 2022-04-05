@@ -11,5 +11,5 @@ variable "lambda_bucket_id" {
 variable "namespace" {
   description = "Infrastructure namespace"
   type        = string
-  default     = "rangle-tracker"
+  default     = "radius-tracker"
 }
