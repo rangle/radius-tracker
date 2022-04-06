@@ -21,7 +21,7 @@ provider "aws" {
 
 resource "aws_s3_bucket" "_" {
   bucket        = "radius-tracker"
-  force_destroy = true
+  force_destroy = false
 
   tags = {
     project = "radiustracker"
@@ -39,4 +39,3 @@ resource "aws_s3_bucket_versioning" "_" {
     status = "Enabled"
   }
 }
-
