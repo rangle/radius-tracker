@@ -1,49 +1,26 @@
 import React, { memo, useEffect, useState } from "react";
-import createWorker from "worker-loader!../tracker/worker";
-import { TrackerRequest, TrackerResponse, TrackerResponseMessage } from "../tracker/payloads";
+import axios from "axios";
+
 import { stringifyError } from "../util/stringifyError";
+import { TrackerRequest, TrackerResponse, TrackerResponseMessage } from "../tracker/payloads";
 import { Results } from "./Results";
 
 const unexpected = (val: never) => { throw new Error(`Unexpected value: ${ val }`); };
-const analyze = (githubUrl: string) => {
-    let terminated = false;
-    const trackerWorker = createWorker();
+const analyze = async (githubUrl: string) => {
+    const snowFlakes: TrackerResponse | {} = {};
+    axios({
+        method: "post",
+        url: "https://uedvp1kkvg.execute-api.us-east-2.amazonaws.com/v1/snowflakes",
+        data: githubUrl,
+    }).then(response => {
+        console.log("lambda response => ", response);
+    })
+        .catch(error => {
+            console.log("lambda error => ", error);
+        });
 
-    type Subscriber = (message: string) => void;
-    const progressSubscribers: Subscriber[] = [];
 
-    const analysisRequest = new Promise<TrackerResponse>((res, rej) => {
-        const onError = (err: unknown) => {
-            if (terminated) { return; }
-            rej(stringifyError(err));
-        };
-
-        trackerWorker.onerror = onError;
-        trackerWorker.onmessageerror = onError;
-        trackerWorker.onmessage = message => {
-            if (terminated) { return; }
-
-            const data: TrackerResponseMessage = message.data;
-            switch (data.type) {
-                case "success": return res(data.payload);
-                case "failure": return rej(data.error);
-                case "progress": return progressSubscribers.forEach(s => s(data.message));
-                default: return unexpected(data);
-            }
-        };
-
-        const request: TrackerRequest = githubUrl;
-        trackerWorker.postMessage(request);
-    });
-
-    return {
-        analysisRequest,
-        subscribeToProgress: (subscriber: Subscriber) => progressSubscribers.push(subscriber),
-        terminate: () => {
-            terminated = true;
-            trackerWorker.terminate();
-        },
-    };
+    return snowFlakes;
 };
 
 const initialLoadState = "loading";
@@ -55,22 +32,10 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
     const [analysisProgress, setAnalysisProgress] = useState<string>(initialProgressMessage);
 
     useEffect(() => {
-        const { analysisRequest, terminate, subscribeToProgress } = analyze(githubUrl);
-        subscribeToProgress(setAnalysisProgress);
+        analyze(githubUrl);
 
         setAnalysisState(initialLoadState);
         setAnalysisProgress(initialProgressMessage);
-        analysisRequest.then(
-            data => {
-                setAnalysis(data);
-                setAnalysisState("resolved");
-            },
-            err => {
-                setAnalysisError(err);
-                setAnalysisState("rejected");
-            });
-
-        return terminate;
     }, [githubUrl]);
 
     switch (analysisState) {
@@ -86,7 +51,7 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
 
         case "resolved":
             if (!analysis) { throw new Error("Implementation error: analysis is not defined when state is resolved"); }
-            return <Results data={ analysis }/>;
+            return <Results data={ analysis } />;
 
         default: return unexpected(analysisState);
     }
