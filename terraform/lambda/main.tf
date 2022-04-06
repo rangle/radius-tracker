@@ -32,6 +32,11 @@ resource "aws_iam_role" "_" {
   ]
 }
 EOF
+
+  tags = {
+    project = "radiustracker"
+  }
+
 }
 
 resource "aws_lambda_function" "_" {
@@ -49,6 +54,10 @@ resource "aws_lambda_function" "_" {
   depends_on = [
     null_resource._
   ]
+
+  tags = {
+    project = "radiustracker"
+  }
 }
 
 resource "aws_iam_policy" "_" {
@@ -70,6 +79,10 @@ resource "aws_iam_policy" "_" {
   ]
 }
 EOF
+
+  tags = {
+    project = "radiustracker"
+  }
 }
 
 resource "aws_iam_policy_attachment" "_" {
@@ -102,6 +115,10 @@ resource "aws_lambda_permission" "apigw" {
 resource "aws_api_gateway_rest_api" "_" {
   name        = "lambda-api"
   description = "Proxy to handle requests to lambda"
+
+  tags = {
+    project = "radiustracker"
+  }
 }
 
 resource "aws_api_gateway_resource" "_" {

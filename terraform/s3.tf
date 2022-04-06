@@ -21,7 +21,11 @@ provider "aws" {
 
 resource "aws_s3_bucket" "_" {
   bucket        = "radius-tracker"
-  force_destroy = false
+  force_destroy = true
+
+  tags = {
+    project = "radiustracker"
+  }
 }
 
 resource "aws_s3_bucket_acl" "_" {
@@ -29,24 +33,10 @@ resource "aws_s3_bucket_acl" "_" {
   acl    = "private"
 }
 
-# -----------------------------------------------------------------------------
-# Resources: Terraform State Bucket
-# -----------------------------------------------------------------------------
-
-
-resource "aws_s3_bucket" "state_bucket" {
-  bucket        = "raduis-tracker-terraform-state"
-  force_destroy = false
-}
-
-resource "aws_s3_bucket_acl" "state_bucket_acl" {
-  bucket = aws_s3_bucket.state_bucket.id
-  acl    = "private"
-}
-
-resource "aws_s3_bucket_versioning" "state_bucket_versioning" {
-  bucket = aws_s3_bucket.state_bucket.id
+resource "aws_s3_bucket_versioning" "_" {
+  bucket = aws_s3_bucket._.id
   versioning_configuration {
     status = "Enabled"
   }
 }
+

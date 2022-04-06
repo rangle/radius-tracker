@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket  = "raduis-tracker-terraform-state"
+    bucket  = "radius-tracker"
     key     = "tracker-state"
     profile = "radius-tracker"
     region  = "us-east-2"
