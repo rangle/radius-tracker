@@ -2,10 +2,7 @@
 # Outputs: API Gateway
 # -----------------------------------------------------------------------------
 
-output "api_invoke_url" {
-  value = aws_api_gateway_stage._.invoke_url
-
-  depends_on = [
-    aws_api_gateway_stage._
-  ]
+output "lambda_api_outputs" {
+  value = module.lambda_api
 }
+

@@ -172,5 +172,3 @@ module "cors" {
   api_id          = aws_api_gateway_rest_api._.id
   api_resource_id = aws_api_gateway_resource._.id
 }
-
-
