@@ -24,5 +24,7 @@ npm-debug.log*
 /src/lambda/package-lock.json
 /src/lambda/yarn.lock
 /src/lambda/build
-lambda.zip
+/lambda.zip
 /terraform/.terraform
+/terraform/.terraform.lock.hcl
+/terraform/terraform.tfstate.backup
