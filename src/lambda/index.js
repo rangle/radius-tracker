@@ -144,24 +144,22 @@ function findF(fs, path) {
 function responseEvent(response) {
     const headers = {
         "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
     };
     switch (response.statusCode) {
         case 200:
-            console.log("200");
             return {
                 statusCode: response.statusCode,
                 headers,
                 body: JSON.stringify(response.payload),
             };
         case 400:
-            console.log("400");
             return {
                 statusCode: response.statusCode,
                 headers,
                 body: JSON.stringify(response.message),
             };
         default:
-            console.log("500");
             return {
                 statusCode: 500,
                 headers,

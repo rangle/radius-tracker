@@ -215,18 +215,17 @@ function findF(fs: MemfsVolume, path: string): string[] {
 function responseEvent(response: TrackerResponseMessage): APIGatewayProxyResult {
     const headers = {
         "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
     };
 
     switch (response.statusCode) {
         case 200:
-            console.log("200");
             return {
                 statusCode: response.statusCode,
                 headers,
                 body: JSON.stringify(response.payload),
             };
         case 400:
-            console.log("400");
             return {
                 statusCode: response.statusCode,
                 headers,
@@ -234,7 +233,6 @@ function responseEvent(response: TrackerResponseMessage): APIGatewayProxyResult 
             };
 
         default:
-            console.log("500");
             return {
                 statusCode: 500,
                 headers,
