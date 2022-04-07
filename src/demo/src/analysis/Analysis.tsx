@@ -4,13 +4,17 @@ import axios from "axios";
 import { stringifyError } from "../util/stringifyError";
 import { TrackerRequest, TrackerResponse, TrackerResponseMessage } from "../tracker/payloads";
 import { Results } from "./Results";
+import api from "../api.json";
 
 const unexpected = (val: never) => { throw new Error(`Unexpected value: ${ val }`); };
 const analyze = async (githubUrl: string) => {
     const snowFlakes: TrackerResponse | {} = {};
+    const {
+        api_invoke_url,
+    } = api;
     axios({
         method: "post",
-        url: "https://uedvp1kkvg.execute-api.us-east-2.amazonaws.com/v1/snowflakes",
+        url: `${ api_invoke_url }/snowflakes`,
         data: githubUrl,
     }).then(response => {
         console.log("lambda response => ", response);

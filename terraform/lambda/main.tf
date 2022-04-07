@@ -16,10 +16,10 @@ resource "null_resource" "_" {
 }
 resource "null_resource" "env" {
   triggers = {
-    "invoke_url_changed" = aws_api_gateway_stage._.invoke_url
+    "invoke_url_changed" = aws_api_gateway_deployment._.id
   }
   provisioner "local-exec" {
-    command = "rm -rf terraform-outputs.json && terraform output -json lambda_api_outputs >> terraform-outputs.json"
+    command = "rm -rf ../src/demo/src/api.json && terraform output -json lambda_api_outputs >> ../src/demo/src/api.json"
   }
 
   depends_on = [
