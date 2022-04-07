@@ -26,3 +26,4 @@ npm-debug.log*
 /src/lambda/build
 /lambda.zip
 /terraform/.terraform
+terraform/terraform-outputs.json

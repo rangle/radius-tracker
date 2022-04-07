@@ -21,4 +21,3 @@ module "lambda_api" {
     data.archive_file._
   ]
 }
-

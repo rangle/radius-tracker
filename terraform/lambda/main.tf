@@ -14,6 +14,18 @@ resource "null_resource" "_" {
     command = "aws --profile radius-tracker s3 cp ${var.lambda_zip_path} s3://${var.lambda_bucket_id}"
   }
 }
+resource "null_resource" "env" {
+  triggers = {
+    "invoke_url_changed" = aws_api_gateway_stage._.invoke_url
+  }
+  provisioner "local-exec" {
+    command = "rm -rf terraform-outputs.json && terraform output -json lambda_api_outputs >> terraform-outputs.json"
+  }
+
+  depends_on = [
+    aws_api_gateway_stage._
+  ]
+}
 
 resource "aws_iam_role" "_" {
   name               = "${var.namespace}-lambda"
