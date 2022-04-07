@@ -26,4 +26,4 @@ npm-debug.log*
 /src/lambda/build
 /lambda.zip
 /terraform/.terraform
-src/demo/api.json
+src/demo/src/api.json
