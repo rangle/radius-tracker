@@ -7,40 +7,47 @@ import { Results } from "./Results";
 import api from "../api.json";
 
 const unexpected = (val: never) => { throw new Error(`Unexpected value: ${ val }`); };
-const analyze = async (githubUrl: string) => {
-    const snowFlakes: TrackerResponse | {} = {};
-    const {
-        api_invoke_url,
-    } = api;
-    axios({
-        method: "post",
-        url: `${ api_invoke_url }/snowflakes`,
-        data: githubUrl,
-    }).then(response => {
-        console.log("lambda response => ", response);
-    })
-        .catch(error => {
-            console.log("lambda error => ", error);
-        });
 
 
-    return snowFlakes;
-};
-
-const initialLoadState = "loading";
-const initialProgressMessage = "Loading";
+const initialProgressMessage = "Loading...";
 function Analysis({ githubUrl }: { githubUrl: string }) {
     const [analysis, setAnalysis] = useState<TrackerResponse | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
-    const [analysisState, setAnalysisState] = useState<"loading" | "resolved" | "rejected">(initialLoadState);
+    const [analysisState, setAnalysisState] = useState<"loading" | "resolved" | "rejected">("loading");
     const [analysisProgress, setAnalysisProgress] = useState<string>(initialProgressMessage);
 
     useEffect(() => {
-        analyze(githubUrl);
-
-        setAnalysisState(initialLoadState);
-        setAnalysisProgress(initialProgressMessage);
+        analyze();
     }, [githubUrl]);
+
+    const analyze = async () => {
+        setAnalysisState("loading");
+        setAnalysisProgress(initialProgressMessage);
+        const {
+            api_invoke_url,
+        } = api;
+        axios({
+            method: "post",
+            url: `${ api_invoke_url }/snowflakes`,
+            data: githubUrl,
+        }).then(response => {
+            switch (response.data.code) {
+                case 200:
+                    setAnalysis(response.data.payload);
+                    setAnalysisState("resolved");
+                    break;
+                default:
+                    setAnalysisError(response.data.payload);
+                    setAnalysisState("rejected");
+                    break;
+            }
+
+        })
+            .catch(error => {
+                setAnalysisState("rejected");
+                setAnalysisError(error);
+            });
+    };
 
     switch (analysisState) {
         case "loading": return <>
@@ -50,7 +57,7 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
 
         case "rejected": return <div>
             <p>Error analyzing { githubUrl }:</p>
-            <pre>{ analysisError }</pre>
+            <div>{ JSON.stringify(analysisError) }</div>
         </div>;
 
         case "resolved":

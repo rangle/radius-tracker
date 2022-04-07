@@ -60,7 +60,7 @@ type TrackerResponse = {
 };
 
 type TrackerResponseSuccess = { statusCode: 200, payload: TrackerResponse };
-type TrackerResponseFailure = { statusCode: 400, message: string };
+type TrackerResponseFailure = { statusCode: 400, payload: string };
 export type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
 
 export type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
@@ -79,13 +79,13 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     const url = new URL(githubUrl);
     if (url.hostname !== "github.com") {
         return responseEvent({
-            statusCode: 400, message: "github.com url expected",
+            statusCode: 400, payload: "github.com url expected",
         });
     }
     const [, owner, repo] = url.pathname.split("/");
     if (!owner || !repo) {
         return responseEvent({
-            statusCode: 400, message: "Url does not point to a github repo",
+            statusCode: 400, payload: "Url does not point to a github repo",
         });
     }
 
@@ -218,25 +218,12 @@ function responseEvent(response: TrackerResponseMessage): APIGatewayProxyResult 
         "Access-Control-Allow-Origin": "*",
     };
 
-    switch (response.statusCode) {
-        case 200:
-            return {
-                statusCode: response.statusCode,
-                headers,
-                body: JSON.stringify(response.payload),
-            };
-        case 400:
-            return {
-                statusCode: response.statusCode,
-                headers,
-                body: JSON.stringify(response.message),
-            };
-
-        default:
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify("Something went wrong, please try again."),
-            };
-    }
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            payload: response.payload,
+            code: response.statusCode,
+        }),
+    };
 }

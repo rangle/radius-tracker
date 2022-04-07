@@ -20,13 +20,13 @@ exports.handler = (event) => tslib_1.__awaiter(void 0, void 0, void 0, function*
     const url = new URL(githubUrl);
     if (url.hostname !== "github.com") {
         return responseEvent({
-            statusCode: 400, message: "github.com url expected",
+            statusCode: 400, payload: "github.com url expected",
         });
     }
     const [, owner, repo] = url.pathname.split("/");
     if (!owner || !repo) {
         return responseEvent({
-            statusCode: 400, message: "Url does not point to a github repo",
+            statusCode: 400, payload: "Url does not point to a github repo",
         });
     }
     const repoInfo = yield octokit.repos.get({ owner, repo });
@@ -146,24 +146,12 @@ function responseEvent(response) {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
     };
-    switch (response.statusCode) {
-        case 200:
-            return {
-                statusCode: response.statusCode,
-                headers,
-                body: JSON.stringify(response.payload),
-            };
-        case 400:
-            return {
-                statusCode: response.statusCode,
-                headers,
-                body: JSON.stringify(response.message),
-            };
-        default:
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify("Something went wrong, please try again."),
-            };
-    }
+    return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+            payload: response.payload,
+            code: response.statusCode,
+        }),
+    };
 }

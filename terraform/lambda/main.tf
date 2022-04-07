@@ -56,7 +56,7 @@ resource "aws_lambda_function" "_" {
   function_name    = "${var.namespace}-lambda"
   role             = aws_iam_role._.arn
   runtime          = "nodejs14.x"
-  timeout          = 120
+  timeout          = 180
   memory_size      = 512
   s3_bucket        = var.lambda_bucket_id
   s3_key           = basename(var.lambda_zip_path)
