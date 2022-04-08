@@ -2,7 +2,6 @@
 # Outputs: API Gateway
 # -----------------------------------------------------------------------------
 
-output "worker_outputs" {
-  value = module.worker
+output "listener_outputs" {
+  value = module.listener
 }
-

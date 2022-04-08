@@ -7,6 +7,10 @@ variable "lambda_bucket_id" {
   description = "Bucket ID to store lambda code"
   type        = string
 }
+variable "sns_arn" {
+  description = "SNS arn"
+  type        = string
+}
 
 variable "namespace" {
   description = "Infrastructure namespace"

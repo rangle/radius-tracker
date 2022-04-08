@@ -13,3 +13,8 @@ variable "namespace" {
   type        = string
   default     = "radius-tracker"
 }
+
+variable "sqs_queue_arn" {
+  description = "SQS queue arn"
+  type        = string
+}

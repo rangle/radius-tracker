@@ -1,9 +1,4 @@
-import {
-    APIGatewayProxyResult,
-    APIGatewayProxyEvent,
-} from "aws-lambda";
 import { InMemoryFileSystemHost, Node, Project, ProjectOptions } from "ts-morph";
-import { Octokit } from "@octokit/rest";
 import { Buffer } from "buffer";
 import git from "isomorphic-git";
 import http from "isomorphic-git/http/node";
@@ -20,10 +15,16 @@ import {
     SUPPORTED_FILE_TYPES,
 } from "radius-tracker";
 
-
-interface TrackerEvent extends APIGatewayProxyEvent {
-    body: string, // Github repo url
+interface TrackerEvent {
+    owner: string,
+    repo: string,
+    data: {
+        clone_url: string,
+        default_branch: string,
+    },
 }
+
+type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
 
 type NodeRef = {
     text: string,
@@ -34,69 +35,18 @@ type NodeRef = {
     url: string,
 };
 
-type TrackerWarning = {
-    type: string,
-    message: string,
-    node?: NodeRef,
-};
-
-type TrackerUsageData = {
-    target: NodeRef,
-    usages: TrackerUsage[],
-};
-type TrackerUsage = {
-    use: NodeRef,
-    trace: TrackerTrace[],
-    aliasPath: string[],
-};
-type TrackerTrace = {
-    type: string,
-    node: NodeRef,
-};
-
-type TrackerResponse = {
-    warnings: TrackerWarning[],
-    snowflakeUsages: TrackerUsageData[],
-};
-
-type TrackerResponseSuccess = { statusCode: 200, payload: TrackerResponse };
-type TrackerResponseFailure = { statusCode: 400, payload: string };
-export type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
-
-export type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
-
-
-global.Buffer = Buffer; // TODO: provide via webpack globals
-
 const testFileRe = /\.(tests?|specs?|stories|story)\./; // TODO: accept as a parameter
 const yarnDirRe = /\/\.yarn\//;
 const jsRe = /\.jsx?$/;
 
-const octokit = new Octokit();
-
-exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> => {
-    const githubUrl = event.body;
-    const url = new URL(githubUrl);
-    if (url.hostname !== "github.com") {
-        return responseEvent({
-            statusCode: 400, payload: "github.com url expected",
-        });
-    }
-    const [, owner, repo] = url.pathname.split("/");
-    if (!owner || !repo) {
-        return responseEvent({
-            statusCode: 400, payload: "Url does not point to a github repo",
-        });
-    }
-
-    const repoInfo = await octokit.repos.get({ owner, repo });
-
+exports.handler = async (event: TrackerEvent) => {
+    const { owner, repo, data } = event;
     const cloneFs = Volume.fromJSON({});
     await git.clone({
         fs: { promises: cloneFs.promises },
         http,
         dir: "/",
-        url: repoInfo.data.clone_url,
+        url: data.clone_url,
         depth: 1,
         singleBranch: true,
         noTags: true,
@@ -159,19 +109,19 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
             text: node.print({ removeComments: true }),
             startLine, endLine,
             context: node.getParent()?.print({ removeComments: true }),
-            url: `https://github.com/${ owner }/${ repo }/blob/${ repoInfo.data.default_branch }${ filepath }#L${ startLine }-L${ endLine }`,
+            url: `https://github.com/${ owner }/${ repo }/blob/${ data.default_branch }${ filepath }#L${ startLine }-L${ endLine }`,
         };
     }
-    const response: TrackerResponse = {
+    const response = {
         warnings: [...dependencies.warnings, ...findUsageWarnings].map(w => ({
             type: w.type,
             message: w.message,
         })),
         snowflakeUsages: snowflakeUsageData
             .sort((a, b) => b.usages.length - a.usages.length)
-            .map(data => ({
-                target: nodeRef(data.target),
-                usages: data.usages.map(u => ({
+            .map(d => ({
+                target: nodeRef(d.target),
+                usages: d.usages.map(u => ({
                     use: nodeRef(u.use),
                     aliasPath: u.aliasPath,
                     trace: u.trace.map(t => ({
@@ -182,12 +132,9 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
             })),
     };
 
-    return responseEvent({
-        statusCode: 200, payload: response,
-    });
+    console.log(response);
 
 };
-
 
 function isFile(fs: MemfsVolume, path: string): boolean {
     return fs.statSync(path, { throwIfNoEntry: false })?.isFile() ?? false;
@@ -210,20 +157,4 @@ function findF(fs: MemfsVolume, path: string): string[] {
         if (stat.isDirectory()) { files.push(...findF(fs, filepath)); }
     }
     return files;
-}
-
-function responseEvent(response: TrackerResponseMessage): APIGatewayProxyResult {
-    const headers = {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-    };
-
-    return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-            payload: response.payload,
-            code: response.statusCode,
-        }),
-    };
 }
