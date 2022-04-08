@@ -108,6 +108,11 @@ resource "aws_iam_role_policy_attachment" "_" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_cloudwatch_log_group" "worker" {
+  name              = "/aws/lambda/${aws_lambda_function._.function_name}"
+  retention_in_days = 14
+}
+
 # -----------------------------------------------------------------------------
 # Resources: API Gateway
 # -----------------------------------------------------------------------------

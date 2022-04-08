@@ -113,6 +113,11 @@ resource "aws_iam_role_policy" "sqs_policy" {
 EOF
 }
 
+resource "aws_cloudwatch_log_group" "_" {
+  name              = "/aws/lambda/${aws_lambda_function._.function_name}"
+  retention_in_days = 14
+}
+
 
 # -----------------------------------------------------------------------------
 # Resources: SNS & SQS
@@ -130,7 +135,8 @@ resource "aws_sns_topic" "_" {
 resource "aws_sqs_queue" "_" {
   name                       = "${var.namespace}-listener-queue"
   redrive_policy             = "{\"deadLetterTargetArn\":\"${aws_sqs_queue.dl_queue.arn}\",\"maxReceiveCount\":5}"
-  visibility_timeout_seconds = 300
+  visibility_timeout_seconds = 60
+  message_retention_seconds  = 60
 
   tags = {
     project = "radiustracker"
