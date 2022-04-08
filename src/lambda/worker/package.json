@@ -3,9 +3,6 @@
   "version": "0.0.1",
   "description": "Lambda worker that searching for snowflakes",
   "main": "index.js",
-  "scripts": {
-    "compile": "tsc -p ../tsconfig.json"
-  },
   "author": {
     "name": "Pavel Ivanov",
     "email": "pablospaniard@gmail.com"

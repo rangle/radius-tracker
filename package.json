@@ -23,7 +23,8 @@
     "prep": "yarn install --no-audit && ts-node -T src/lib/checkEngine.ts --check-yarn",
     "demo-start": "yarn demo-prep && ts-node -T ./src/demo/run-script.ts start",
     "demo-build": "yarn demo-prep && ts-node -T ./src/demo/run-script.ts build",
-    "demo-prep": "yarn task -- build --no-test && yarn install --cwd src/demo"
+    "demo-prep": "yarn task -- build --no-test && yarn install --cwd src/demo",
+    "build-lambda": "tsc -p src/lambda/tsconfig.json"
   },
   "keywords": [],
   "author": {
