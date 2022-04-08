@@ -1,5 +1,5 @@
 locals {
-  lambda_code_hash = filebase64sha256(var.lambda_zip_path)
+  lambda_code_hash = filebase64sha256(var.worker_zip_path)
 }
 
 # -----------------------------------------------------------------------------
@@ -11,7 +11,7 @@ resource "null_resource" "_" {
     "source_code_hash" = local.lambda_code_hash
   }
   provisioner "local-exec" {
-    command = "aws --profile radius-tracker s3 cp ${var.lambda_zip_path} s3://${var.lambda_bucket_id}"
+    command = "aws --profile radius-tracker s3 cp ${var.worker_zip_path} s3://${var.lambda_bucket_id}"
   }
 }
 resource "null_resource" "env" {
@@ -19,7 +19,7 @@ resource "null_resource" "env" {
     "invoke_url_changed" = aws_api_gateway_deployment._.id
   }
   provisioner "local-exec" {
-    command = "rm -rf ../src/demo/src/api.json && terraform output -json lambda_api_outputs >> ../src/demo/src/api.json"
+    command = "rm -rf ../src/demo/src/api.json && terraform output -json worker_outputs >> ../src/demo/src/api.json"
   }
 
   depends_on = [
@@ -28,7 +28,7 @@ resource "null_resource" "env" {
 }
 
 resource "aws_iam_role" "_" {
-  name               = "${var.namespace}-lambda"
+  name               = "${var.namespace}-worker"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -53,13 +53,13 @@ EOF
 
 resource "aws_lambda_function" "_" {
   publish          = true
-  function_name    = "${var.namespace}-lambda"
+  function_name    = "${var.namespace}-worker"
   role             = aws_iam_role._.arn
   runtime          = "nodejs14.x"
-  timeout          = 180
+  timeout          = 120
   memory_size      = 512
   s3_bucket        = var.lambda_bucket_id
-  s3_key           = basename(var.lambda_zip_path)
+  s3_key           = basename(var.worker_zip_path)
   handler          = "index.handler"
   source_code_hash = local.lambda_code_hash
 
@@ -73,7 +73,7 @@ resource "aws_lambda_function" "_" {
 }
 
 resource "aws_iam_policy" "_" {
-  name        = "${var.namespace}-lambda"
+  name        = "${var.namespace}-worker"
   description = "Lambda Policy"
   policy      = <<EOF
 {
@@ -98,7 +98,7 @@ EOF
 }
 
 resource "aws_iam_policy_attachment" "_" {
-  name       = "${var.namespace}-lambda"
+  name       = "${var.namespace}-worker"
   policy_arn = aws_iam_policy._.arn
   roles      = [aws_iam_role._.name]
 }
@@ -107,6 +107,11 @@ resource "aws_iam_role_policy_attachment" "_" {
   role       = aws_iam_role._.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
+
+# -----------------------------------------------------------------------------
+# Resources: API Gateway
+# -----------------------------------------------------------------------------
+
 
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"
@@ -119,13 +124,8 @@ resource "aws_lambda_permission" "apigw" {
   source_arn = "${aws_api_gateway_rest_api._.execution_arn}/*/*"
 }
 
-
-# -----------------------------------------------------------------------------
-# Resources: Lambda
-# -----------------------------------------------------------------------------
-
 resource "aws_api_gateway_rest_api" "_" {
-  name        = "lambda-api"
+  name        = "${var.namespace}-worker-api"
   description = "Proxy to handle requests to lambda"
 
   tags = {
@@ -201,3 +201,5 @@ module "cors" {
   api_id          = aws_api_gateway_rest_api._.id
   api_resource_id = aws_api_gateway_resource._.id
 }
+
+

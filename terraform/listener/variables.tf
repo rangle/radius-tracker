@@ -1,4 +1,4 @@
-variable "lambda_zip_path" {
+variable "listener_zip_path" {
   description = "Path to lambda zip file"
   type        = string
 }

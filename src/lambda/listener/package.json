@@ -1,0 +1,19 @@
+{
+  "name": "radius-tracker-lambda-listener",
+  "version": "0.0.1",
+  "description": "Lambda listener for API Gateway request",
+  "main": "index.js",
+  "scripts": {
+    "compile": "tsc -p ./tsconfig.json"
+  },
+  "author": {
+    "name": "Pavel Ivanov",
+    "email": "pablospaniard@gmail.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.93",
+    "aws-sdk": "^2.1103.0",
+    "typescript": "^4.6.3"
+  }
+}

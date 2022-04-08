@@ -20,9 +20,8 @@ npm-debug.log*
 /.tsbuildinfo
 
 # Lambda related artifacts
-/src/lambda/node_modules
-/src/lambda/package-lock.json
-/src/lambda/yarn.lock
-/src/lambda/build
-/lambda.zip
+/src/lambda/worker/node_modules
+/src/lambda/listener/node_modules
+/lambda-worker.zip
+/lambda-listener.zip
 /terraform/.terraform

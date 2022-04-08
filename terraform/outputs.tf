@@ -2,7 +2,7 @@
 # Outputs: API Gateway
 # -----------------------------------------------------------------------------
 
-output "lambda_api_outputs" {
-  value = module.lambda_api
+output "worker_outputs" {
+  value = module.worker
 }
 
