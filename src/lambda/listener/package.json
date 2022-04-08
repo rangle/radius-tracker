@@ -4,7 +4,7 @@
   "description": "Lambda listener for API Gateway request",
   "main": "index.js",
   "scripts": {
-    "compile": "tsc -p ./tsconfig.json"
+    "compile": "tsc -p ../tsconfig.json"
   },
   "author": {
     "name": "Pavel Ivanov",
@@ -15,5 +15,8 @@
     "@types/aws-lambda": "^8.10.93",
     "aws-sdk": "^2.1103.0",
     "typescript": "^4.6.3"
+  },
+  "dependencies": {
+    "tslib": "^2.3.1"
   }
 }
