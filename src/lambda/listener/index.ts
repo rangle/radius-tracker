@@ -1,9 +1,8 @@
 import {
     APIGatewayProxyResult,
     APIGatewayProxyEvent,
-    Context,
 } from "aws-lambda";
-import { SNS } from "aws-sdk";
+import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import { Buffer } from "buffer";
 import { Octokit } from "@octokit/rest";
 
@@ -24,10 +23,14 @@ type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
 global.Buffer = Buffer; // TODO: provide via webpack globals
 
 const octokit = new Octokit();
-const sns = new SNS();
+
+// Create SNS service object.
+const snsClient = new SNSClient({ region: process.env.REGION });
 
 
-exports.handler = async (event: TrackerEvent, context: Context): Promise<APIGatewayProxyResult> => {
+exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> => {
+    console.log("LAMBDA process.env.REGION", process.env.REGION);
+    console.log("LAMBDA process.env.SNS_ARN", process.env.SNS_ARN);
     const url = new URL(event.body);
     if (url.hostname !== "github.com") {
         return responseEvent({
@@ -46,11 +49,15 @@ exports.handler = async (event: TrackerEvent, context: Context): Promise<APIGate
 
     const params = {
         Message: JSON.stringify({ owner, repo, data: repoInfo.data }),
-        Subject: `Data to analyze ${ url }`,
         TopicArn: process.env.SNS_ARN,
     };
 
-    sns.publish(params, context.done);
+    try {
+        const data = await snsClient.send(new PublishCommand(params));
+        console.log("LAMBDA PUBLISH Success.", data);
+    } catch (err) {
+        console.log("LAMBDA PUBLISH Error.", err);
+    }
 
     return responseEvent({
         statusCode: 200, payload: repoInfo.data.clone_url,
