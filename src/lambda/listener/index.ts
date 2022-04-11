@@ -29,8 +29,6 @@ const snsClient = new SNSClient({ region: process.env.REGION });
 
 
 exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> => {
-    console.log("LAMBDA process.env.REGION", process.env.REGION);
-    console.log("LAMBDA process.env.SNS_ARN", process.env.SNS_ARN);
     const url = new URL(event.body);
     if (url.hostname !== "github.com") {
         return responseEvent({
