@@ -54,8 +54,8 @@ resource "aws_lambda_function" "_" {
   function_name    = "${var.namespace}-worker"
   role             = aws_iam_role._.arn
   runtime          = "nodejs14.x"
-  timeout          = 30
-  memory_size      = 128
+  timeout          = 300
+  memory_size      = 1024
   s3_bucket        = var.lambda_bucket_id
   s3_key           = basename(var.worker_zip_path)
   handler          = "index.handler"
@@ -64,6 +64,13 @@ resource "aws_lambda_function" "_" {
   depends_on = [
     null_resource._
   ]
+
+  environment {
+    variables = {
+      REGION      = var.aws_region
+      BUCKET_NAME = var.bucket_name
+    }
+  }
 
   tags = {
     project = "radiustracker"
@@ -89,6 +96,33 @@ resource "aws_iam_policy" "logs_policy_worker" {
   ]
 }
 EOF
+}
+
+resource "aws_iam_role_policy" "save_result_objest" {
+  name   = "${var.namespace}-save-result-object-policy"
+  role   = aws_iam_role._.id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": ["${var.bucket_arn}"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": ["${var.bucket_arn}/*"]
+    }
+  ]
+}
+EOF
+
 }
 
 resource "aws_iam_role_policy" "sqs_policy" {

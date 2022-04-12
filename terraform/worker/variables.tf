@@ -18,3 +18,16 @@ variable "sqs_queue_arn" {
   description = "SQS queue arn"
   type        = string
 }
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-2"
+}
+variable "bucket_name" {
+  description = "S3 bucket name"
+  type        = string
+}
+variable "bucket_arn" {
+  description = "S3 bucket arn"
+  type        = string
+}

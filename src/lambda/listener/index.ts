@@ -13,7 +13,7 @@ interface TrackerEvent extends APIGatewayProxyEvent {
 }
 
 
-type TrackerResponseSuccess = { statusCode: 200, payload: string };
+type TrackerResponseSuccess = { statusCode: 200, payload: number };
 type TrackerResponseFailure = { statusCode: 400, payload: string };
 type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
 
@@ -44,7 +44,6 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
 
     const repoInfo = await octokit.repos.get({ owner, repo });
 
-
     const params = {
         Message: JSON.stringify({ owner, repo, data: repoInfo.data }),
         TopicArn: process.env.SNS_ARN,
@@ -57,8 +56,10 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
         console.log("LAMBDA PUBLISH Error.", err);
     }
 
+    console.log("LAMBDA REPO_INFO => ", repoInfo);
+
     return responseEvent({
-        statusCode: 200, payload: repoInfo.data.clone_url,
+        statusCode: 200, payload: repoInfo.data.id,
     });
 
 

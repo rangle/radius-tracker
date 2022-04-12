@@ -128,6 +128,8 @@ module "worker" {
   lambda_bucket_id = aws_s3_bucket._.id
   worker_zip_path  = "${path.cwd}/../lambda_worker.zip"
   sqs_queue_arn    = aws_sqs_queue._.arn
+  bucket_name      = aws_s3_bucket._.bucket
+  bucket_arn       = aws_s3_bucket._.arn
 
   depends_on = [
     data.archive_file.worker

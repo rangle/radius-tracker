@@ -4,7 +4,7 @@ import git from "isomorphic-git";
 import http from "isomorphic-git/http/node";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 import { Volume } from "memfs";
-
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import {
     detectSnowflakes,
     FindUsageWarning,
@@ -16,13 +16,38 @@ import {
 } from "radius-tracker";
 
 interface TrackerEvent {
-    owner: string,
-    repo: string,
-    data: {
-        clone_url: string,
-        default_branch: string,
-    },
+    Records: Array<eventType>,
 }
+
+type eventType = {
+    messageId: string,
+    body: string,
+};
+
+type TrackerWarning = {
+    type: string,
+    message: string,
+    node?: NodeRef,
+};
+
+type TrackerUsageData = {
+    target: NodeRef,
+    usages: TrackerUsage[],
+};
+type TrackerUsage = {
+    use: NodeRef,
+    trace: TrackerTrace[],
+    aliasPath: string[],
+};
+type TrackerTrace = {
+    type: string,
+    node: NodeRef,
+};
+
+type TrackerResponse = {
+    warnings: TrackerWarning[],
+    snowflakeUsages: TrackerUsageData[],
+};
 
 type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
 
@@ -39,8 +64,18 @@ const testFileRe = /\.(tests?|specs?|stories|story)\./; // TODO: accept as a par
 const yarnDirRe = /\/\.yarn\//;
 const jsRe = /\.jsx?$/;
 
+// Create an Amazon S3 service client object.
+const s3Client = new S3Client({ region: process.env.REGION });
+
 exports.handler = async (event: TrackerEvent) => {
-    const { owner, repo, data } = event;
+    let body = "";
+    if (event.Records[0] !== undefined && event.Records[0].body !== undefined) {
+        body = event.Records[0].body;
+    } else {
+        throw new Error("No data provided with event's body");
+    }
+    const { Message } = JSON.parse(body);
+    const { owner, repo, data } = JSON.parse(Message);
     const cloneFs = Volume.fromJSON({});
     await git.clone({
         fs: { promises: cloneFs.promises },
@@ -51,6 +86,8 @@ exports.handler = async (event: TrackerEvent) => {
         singleBranch: true,
         noTags: true,
     });
+
+    console.log("LAMBDA git cloned");
 
     const tsconfigPath = "/tsconfig.json";
     const jsconfigPath = "/jsconfig.json";
@@ -132,8 +169,8 @@ exports.handler = async (event: TrackerEvent) => {
             })),
     };
 
-    console.log(response);
-
+    console.log("LAMBDA response => ", response);
+    await putS3Object(response, data.id);
 };
 
 function isFile(fs: MemfsVolume, path: string): boolean {
@@ -158,3 +195,33 @@ function findF(fs: MemfsVolume, path: string): string[] {
     }
     return files;
 }
+
+const putS3Object = async (response: TrackerResponse, id: number) => {
+    // Set the parameters.
+    const bucketParams = {
+        Bucket: process.env.BUCKET_NAME,
+        // Specify the name of the new object.
+        Key: id.toString(),
+        // Content of the new object.
+        Body: JSON.stringify(response),
+    };
+
+    console.log("LAMBDA bucketParams => ", bucketParams);
+
+    // Create and upload the object to the S3 bucket.
+    const run = async () => {
+        try {
+            const data = await s3Client.send(new PutObjectCommand(bucketParams));
+            console.log(
+                `Successfully uploaded object to S3: ${ bucketParams.Bucket }/${ bucketParams.Key }`,
+            );
+            console.log(
+                `Object created with data: ${ data }`,
+            );
+        } catch (err) {
+            console.log("Error on upload object to S3", err);
+        }
+
+    };
+    await run();
+};
