@@ -201,7 +201,7 @@ const putS3Object = async (response: TrackerResponse, id: number) => {
     const bucketParams = {
         Bucket: process.env.BUCKET_NAME,
         // Specify the name of the new object.
-        Key: id.toString(),
+        Key: `reports/${ id.toString() }`,
         // Content of the new object.
         Body: JSON.stringify(response),
     };

@@ -141,6 +141,7 @@ module "listener" {
   lambda_bucket_id  = aws_s3_bucket._.id
   listener_zip_path = "${path.cwd}/../lambda_listener.zip"
   sns_arn           = aws_sns_topic._.arn
+  bucket_name       = aws_s3_bucket._.bucket
 
 
   depends_on = [

@@ -25,6 +25,7 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
         setAnalysisProgress(initialProgressMessage);
         const {
             api_invoke_url,
+            bucket_name,
         } = api;
         axios({
             method: "post",
