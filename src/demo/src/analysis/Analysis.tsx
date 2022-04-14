@@ -1,8 +1,7 @@
 import React, { memo, useEffect, useState } from "react";
 import axios from "axios";
 
-import { stringifyError } from "../util/stringifyError";
-import { TrackerRequest, TrackerResponse, TrackerResponseMessage } from "../tracker/payloads";
+import { TrackerResponse } from "../tracker/payloads";
 import { Results } from "./Results";
 import api from "../api.json";
 
@@ -31,16 +30,21 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
             method: "post",
             url: `${ api_invoke_url }/snowflakes`,
             data: githubUrl,
-        }).then(response => {
-            switch (response.data.code) {
-                case 200:
-                    setAnalysis(response.data.payload);
+        }).then(async response => {
+            console.log("LAMBDA listener response => ", response.data.payload);
+            if (response.data.code === 200) {
+                axios({
+                    method: "get",
+                    url: `${ response.data.payload }`,
+                    data: githubUrl,
+                }).then(res => {
+                    console.log("LAMBDA signed url result =>", res.data);
+                    setAnalysis(res.data);
                     setAnalysisState("resolved");
-                    break;
-                default:
-                    setAnalysisError(response.data.payload);
-                    setAnalysisState("rejected");
-                    break;
+                }).catch(err => console.log(err));
+            } else {
+                setAnalysisError(response.data.payload);
+                setAnalysisState("rejected");
             }
 
         })

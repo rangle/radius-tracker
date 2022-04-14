@@ -3,6 +3,8 @@ import {
     APIGatewayProxyEvent,
 } from "aws-lambda";
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Buffer } from "buffer";
 import { Octokit } from "@octokit/rest";
 
@@ -13,7 +15,7 @@ interface TrackerEvent extends APIGatewayProxyEvent {
 }
 
 
-type TrackerResponseSuccess = { statusCode: 200, payload: number };
+type TrackerResponseSuccess = { statusCode: 200, payload: string };
 type TrackerResponseFailure = { statusCode: 400, payload: string };
 type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
 
@@ -26,6 +28,8 @@ const octokit = new Octokit();
 
 // Create SNS service object.
 const snsClient = new SNSClient({ region: process.env.REGION });
+// Create an Amazon S3 service client object.
+const s3Client = new S3Client({ region: process.env.REGION });
 
 
 exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> => {
@@ -49,6 +53,7 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
         TopicArn: process.env.SNS_ARN,
     };
 
+    // Create a message to SNS.
     try {
         const data = await snsClient.send(new PublishCommand(params));
         console.log("LAMBDA PUBLISH Success.", data);
@@ -56,10 +61,25 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
         console.log("LAMBDA PUBLISH Error.", err);
     }
 
-    console.log("LAMBDA REPO_INFO => ", repoInfo);
+    const bucketParams = {
+        Bucket: `${ process.env.BUCKET_NAME }`,
+        Key: `reports/${ repoInfo.data.id }`,
+    };
+    let signedUrl = "";
+
+    // Create a presigned URL.
+    try {
+        const command = new GetObjectCommand(bucketParams);
+        signedUrl = await getSignedUrl(s3Client, command, {
+            expiresIn: 3600,
+        });
+        console.log("LAMBDA SIGNED_URL Success.", signedUrl);
+    } catch (err) {
+        console.log("Error creating presigned URL", err);
+    }
 
     return responseEvent({
-        statusCode: 200, payload: repoInfo.data.id,
+        statusCode: 200, payload: signedUrl,
     });
 
 

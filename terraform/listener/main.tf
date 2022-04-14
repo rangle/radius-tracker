@@ -69,8 +69,9 @@ resource "aws_lambda_function" "_" {
 
   environment {
     variables = {
-      SNS_ARN = var.sns_arn
-      REGION  = var.aws_region
+      SNS_ARN     = var.sns_arn
+      REGION      = var.aws_region
+      BUCKET_NAME = var.bucket_name
     }
   }
 

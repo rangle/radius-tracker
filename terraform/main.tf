@@ -40,6 +40,40 @@ resource "aws_s3_bucket_versioning" "_" {
   }
 }
 
+resource "aws_s3_bucket_policy" "reports" {
+  bucket = aws_s3_bucket._.id
+  policy = <<EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicReadGetObject",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "${aws_s3_bucket._.arn}/reports/*"
+        }
+    ]
+  }
+  EOF
+}
+
+resource "aws_s3_bucket_cors_configuration" "example" {
+  bucket = aws_s3_bucket._.bucket
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3000
+  }
+
+  cors_rule {
+    allowed_methods = ["GET"]
+    allowed_origins = ["*"]
+  }
+}
+
 # -----------------------------------------------------------------------------
 # Resources: SNS & SQS
 # -----------------------------------------------------------------------------
