@@ -169,7 +169,6 @@ exports.handler = async (event: TrackerEvent) => {
             })),
     };
 
-    console.log("LAMBDA response => ", response);
     await putS3Object(response, data.id);
 };
 
@@ -213,13 +212,13 @@ const putS3Object = async (response: TrackerResponse, id: number) => {
         try {
             const data = await s3Client.send(new PutObjectCommand(bucketParams));
             console.log(
-                `Successfully uploaded object to S3: ${ bucketParams.Bucket }/${ bucketParams.Key }`,
+                `LAMBDA Successfully uploaded object to S3: ${ bucketParams.Bucket }/${ bucketParams.Key }`,
             );
             console.log(
-                `Object created with data: ${ data }`,
+                `LAMBDA Object created with data: ${ data }`,
             );
         } catch (err) {
-            console.log("Error on upload object to S3", err);
+            console.log("LAMBDA Error on upload object to S3", err);
         }
 
     };

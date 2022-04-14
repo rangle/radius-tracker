@@ -75,7 +75,7 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
         });
         console.log("LAMBDA SIGNED_URL Success.", signedUrl);
     } catch (err) {
-        console.log("Error creating presigned URL", err);
+        console.log("LAMBDA SIGNED_URL Error", err);
     }
 
     return responseEvent({
