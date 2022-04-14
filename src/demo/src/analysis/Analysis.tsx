@@ -7,6 +7,9 @@ import api from "../api.json";
 
 const unexpected = (val: never) => { throw new Error(`Unexpected value: ${ val }`); };
 
+const s3ObjectRetrive = axios.create();
+
+
 
 const initialProgressMessage = "Loading...";
 function Analysis({ githubUrl }: { githubUrl: string }) {
@@ -14,6 +17,14 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
     const [analysisError, setAnalysisError] = useState<string | null>(null);
     const [analysisState, setAnalysisState] = useState<"loading" | "resolved" | "rejected">("loading");
     const [analysisProgress, setAnalysisProgress] = useState<string>(initialProgressMessage);
+
+    s3ObjectRetrive.interceptors.response.use(undefined, error => {
+        const originalRequest = error.config;
+        if (error.response.status === 403) {
+            return s3ObjectRetrive(originalRequest);
+        }
+        return Promise.reject(error);
+    });
 
     useEffect(() => {
         analyze();
@@ -24,24 +35,21 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
         setAnalysisProgress(initialProgressMessage);
         const {
             api_invoke_url,
-            bucket_name,
         } = api;
         axios({
             method: "post",
             url: `${ api_invoke_url }/snowflakes`,
             data: githubUrl,
         }).then(async response => {
-            console.log("LAMBDA listener response => ", response.data.payload);
             if (response.data.code === 200) {
-                axios({
+                s3ObjectRetrive({
                     method: "get",
                     url: `${ response.data.payload }`,
                     data: githubUrl,
                 }).then(res => {
-                    console.log("LAMBDA signed url result =>", res.data);
                     setAnalysis(res.data);
                     setAnalysisState("resolved");
-                }).catch(err => console.log(err));
+                }).catch(err => console.log("S3 bucket error => ", err));
             } else {
                 setAnalysisError(response.data.payload);
                 setAnalysisState("rejected");
