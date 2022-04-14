@@ -55,7 +55,7 @@ resource "aws_lambda_function" "_" {
   role             = aws_iam_role._.arn
   runtime          = "nodejs14.x"
   timeout          = 300
-  memory_size      = 1024
+  memory_size      = 2048
   s3_bucket        = var.lambda_bucket_id
   s3_key           = basename(var.worker_zip_path)
   handler          = "index.handler"
