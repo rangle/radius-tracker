@@ -11,7 +11,6 @@ terraform {
 
 provider "aws" {
   profile = "radius-tracker"
-  // shared_credentials_file = "~/.aws/credentials" To implement later
 }
 
 # -----------------------------------------------------------------------------
