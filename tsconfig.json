@@ -6,6 +6,12 @@
     "tsBuildInfoFile": "./.tsbuildinfo/buildinfo",
     "incremental": true,
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "src/demo"],
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/demo",
+    "src/lambda"
+  ],
 }
