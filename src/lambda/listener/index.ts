@@ -5,7 +5,6 @@ import {
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { Buffer } from "buffer";
 import { Octokit } from "@octokit/rest";
 
 
@@ -19,10 +18,6 @@ type TrackerResponseSuccess = { statusCode: 200, payload: string };
 type TrackerResponseFailure = { statusCode: 400, payload: string };
 type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
 
-
-
-
-global.Buffer = Buffer; // TODO: provide via webpack globals
 
 const octokit = new Octokit();
 

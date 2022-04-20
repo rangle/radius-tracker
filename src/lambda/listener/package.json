@@ -10,7 +10,6 @@
     "@aws-sdk/client-sns": "^3.58.0",
     "@aws-sdk/s3-request-presigner": "^3.67.0",
     "@octokit/rest": "^18.12.0",
-    "buffer": "^6.0.3",
     "tslib": "^2.3.1"
   }
 }
