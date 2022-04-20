@@ -9,7 +9,6 @@
     "allowSyntheticDefaultImports": false,
     "noUnusedLocals": true,
     "noEmit": false,
-    "outDir": "./",
     "isolatedModules": true,
     "downlevelIteration": false,
     "moduleResolution": "node",
@@ -24,13 +23,5 @@
     "noUncheckedIndexedAccess": true,
     "allowUnreachableCode": false,
     "forceConsistentCasingInFileNames": true,
-  },
-  "include": [
-    "./listener/index.ts",
-    "./worker/index.ts"
-  ],
-  "exclude": [
-    "./listener/index.js",
-    "./worker/index.js"
-  ]
+  }
 }

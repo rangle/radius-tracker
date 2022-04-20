@@ -1,17 +1,9 @@
 {
   "name": "radius-tracker-lambda-worker",
   "version": "0.0.1",
-  "description": "Lambda worker that searching for snowflakes",
-  "main": "index.js",
-  "author": {
-    "name": "Pavel Ivanov",
-    "email": "pablospaniard@gmail.com"
-  },
-  "license": "MIT",
+  "private": true,
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.93",
-    "aws-sdk": "^2.1103.0",
-    "typescript": "^4.6.3"
+    "aws-sdk": "^2.1103.0"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.67.0",
@@ -19,7 +11,7 @@
     "buffer": "^6.0.3",
     "isomorphic-git": "^1.12.1",
     "memfs": "^3.4.1",
-    "radius-tracker": "^0.0.12",
+    "radius-tracker": "../../../build",
     "ts-morph": "^13.0.2",
     "tslib": "^2.3.1"
   }

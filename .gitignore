@@ -22,8 +22,7 @@ npm-debug.log*
 # Lambda related artifacts
 /src/lambda/worker/node_modules
 /src/lambda/listener/node_modules
-/src/lambda/worker/index.js
-/src/lambda/listener/index.js
+/src/lambda/build
 /lambda_worker.zip
 /lambda_listener.zip
 /terraform/.terraform

@@ -1738,6 +1738,11 @@
   resolved "https://registry.yarnpkg.com/@tsconfig/node16/-/node16-1.0.2.tgz#423c77877d0569db20e1fc80885ac4118314010e"
   integrity sha512-eZxlbI8GZscaGS7kkc/trHTT5xgrjH3/1n2JDwusC9iahPKWMRvRjJSAN5mCXviuTGQ/lHnhvv8Q1YTpnfz9gA==
 
+"@types/aws-lambda@^8.10.93":
+  version "8.10.94"
+  resolved "https://registry.yarnpkg.com/@types/aws-lambda/-/aws-lambda-8.10.94.tgz#04c9e20d1c254c663ec293cc84c1197873417386"
+  integrity sha512-Y7Iih+LxURTJ8WTFqLWi2eF0G2oWz/tCkp0EQf0E1ikip1yfNtXOfgeXK3OaKA+/i6fAxvm9L1KPuTj8KBUB0A==
+
 "@types/babel__core@^7.0.0", "@types/babel__core@^7.1.14":
   version "7.1.18"
   resolved "https://registry.yarnpkg.com/@types/babel__core/-/babel__core-7.1.18.tgz#1a29abcc411a9c05e2094c98f9a1b7da6cdf49f8"
@@ -9396,10 +9401,10 @@ tapable@^2.0.0, tapable@^2.1.1, tapable@^2.2.0:
   resolved "https://registry.yarnpkg.com/tapable/-/tapable-2.2.1.tgz#1967a73ef4060a82f12ab96af86d52fdb76eeca0"
   integrity sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==
 
-tasklauncher@^0.0.7:
-  version "0.0.7"
-  resolved "https://registry.yarnpkg.com/tasklauncher/-/tasklauncher-0.0.7.tgz#3b50aa64559bafde177a67fb0ecfe8f3f17c4ee7"
-  integrity sha512-xQPCfjl0ZncwHuINx+UuJJ0nA0UMBhfsxV6mBT8FwhjOJSzUN5Ky0mB8PUxSFEoboRIhabLVTUHfofSzi9vgbg==
+tasklauncher@^0.0.8:
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/tasklauncher/-/tasklauncher-0.0.8.tgz#d4a95e8082008aae6da83b51a8f3001c25607bb4"
+  integrity sha512-lWZf99nbmdwbyom2krfdXuW4d8u9O3NL90FPsemV3lvGqxBMPQ4wWmCZ2pPk4g21DGUY2rWzd0wrmNNZunN6dA==
   dependencies:
     chalk "^4.1.2"
     ts-toolbelt "^9.6.0"

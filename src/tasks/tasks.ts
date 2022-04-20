@@ -2,6 +2,8 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { work, exec, cmd, detectLog } from "tasklauncher";
 
+import { buildLambda } from "./lambda";
+
 type LintOptions = { fix?: boolean };
 const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
 
@@ -58,6 +60,10 @@ yargs(hideBin(process.argv))
                 default: true,
             }),
         args => exec(buildTasks, args),
+    )
+    .command(
+        "build-lambda", "Build lambdas",
+        () => exec(buildLambda),
     )
     .strictCommands()
     .strictOptions()
