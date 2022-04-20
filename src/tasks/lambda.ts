@@ -14,9 +14,7 @@ const lambdaGenerator = (lambdaName: string) => {
 
     const installModules = work(copyPackageJson, copyNodeModules).after(installPackages).after(createLambdaBuildDir);
 
-    const zipFile = cmd(`zip -r lambda_${ lambdaName }.zip ./src/lambda/build/${ lambdaName }`);
-
-    return work(zipFile).after(buildLambda).after(installModules);
+    return work(buildLambda).after(installModules);
 };
 
 export const buildLambda = work(lambdaGenerator("listener"), lambdaGenerator("worker")).after(removeLambdaBuildDir);

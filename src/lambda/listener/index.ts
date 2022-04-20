@@ -15,7 +15,7 @@ interface TrackerEvent extends APIGatewayProxyEvent {
 
 
 type TrackerResponseSuccess = { statusCode: 200, payload: string };
-type TrackerResponseFailure = { statusCode: 400, payload: string };
+type TrackerResponseFailure = { statusCode: 400, payload: Error };
 type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
 
 
@@ -31,13 +31,13 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     const url = new URL(event.body);
     if (url.hostname !== "github.com") {
         return responseEvent({
-            statusCode: 400, payload: "github.com url expected",
+            statusCode: 400, payload: new Error("github.com url expected"),
         });
     }
     const [, owner, repo] = url.pathname.split("/");
     if (!owner || !repo) {
         return responseEvent({
-            statusCode: 400, payload: "Url does not point to a github repo",
+            statusCode: 400, payload: new Error("Url does not point to a github repo"),
         });
     }
 
@@ -51,9 +51,12 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     // Create a message to SNS.
     try {
         const data = await snsClient.send(new PublishCommand(params));
-        console.log("LAMBDA PUBLISH Success.", data);
+        console.log("PUBLISH Success.", data);
     } catch (err) {
-        console.log("LAMBDA PUBLISH Error.", err);
+        console.log("PUBLISH Error.", err);
+        return responseEvent({
+            statusCode: 400, payload: new Error("Error publish message to SNS"),
+        });
     }
 
     const bucketParams = {
@@ -68,9 +71,12 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
         signedUrl = await getSignedUrl(s3Client, command, {
             expiresIn: 3600,
         });
-        console.log("LAMBDA SIGNED_URL Success.", signedUrl);
+        console.log("SIGNED_URL Success.", signedUrl);
     } catch (err) {
-        console.log("LAMBDA SIGNED_URL Error", err);
+        console.log("SIGNED_URL Error", err);
+        return responseEvent({
+            statusCode: 400, payload: new Error("Error creating presigned URL"),
+        });
     }
 
     return responseEvent({
@@ -90,11 +96,10 @@ function responseEvent(response: TrackerResponseMessage): APIGatewayProxyResult 
     };
 
     return {
-        statusCode: 200,
+        statusCode: response.statusCode,
         headers,
         body: JSON.stringify({
             payload: response.payload,
-            code: response.statusCode,
         }),
     };
 }

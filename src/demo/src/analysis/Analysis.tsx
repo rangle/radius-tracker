@@ -36,30 +36,29 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
         const {
             api_invoke_url,
         } = api;
-        axios({
+        const listenerResponse = await axios({
             method: "post",
             url: `${ api_invoke_url }/snowflakes`,
             data: githubUrl,
-        }).then(async response => {
-            if (response.data.code === 200) {
-                s3ObjectRetrive({
-                    method: "get",
-                    url: `${ response.data.payload }`,
-                    data: githubUrl,
-                }).then(res => {
-                    setAnalysis(res.data);
-                    setAnalysisState("resolved");
-                }).catch(err => console.log("S3 bucket error => ", err));
-            } else {
-                setAnalysisError(response.data.payload);
-                setAnalysisState("rejected");
-            }
+        });
 
-        })
-            .catch(error => {
+        if (listenerResponse.status === 200) {
+            s3ObjectRetrive({
+                method: "get",
+                url: `${ listenerResponse.data.payload }`,
+            }).then(res => {
+                setAnalysis(res.data);
+                setAnalysisState("resolved");
+            }).catch(err => {
                 setAnalysisState("rejected");
-                setAnalysisError(error);
+                setAnalysisError(err);
             });
+        }
+        else {
+            setAnalysisError(listenerResponse.data.payload);
+            setAnalysisState("rejected");
+        }
+
     };
 
     switch (analysisState) {
