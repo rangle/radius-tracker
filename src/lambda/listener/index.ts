@@ -13,7 +13,7 @@ interface TrackerEvent extends APIGatewayProxyEvent {
     body: string, // Github repo url
 }
 
-type TrackerResponseMessage = { statusCode: 200 | 400, payload: string };
+type TrackerResponseMessage = { statusCode: 200 | 400 | 500, payload: string };
 
 
 const octokit = new Octokit();
@@ -52,7 +52,7 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     } catch (err) {
         console.log("PUBLISH Error.", err);
         return responseEvent({
-            statusCode: 400, payload: "Error publish message to SNS",
+            statusCode: 500, payload: "Error publish message to SNS",
         });
     }
 
@@ -72,7 +72,7 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     } catch (err) {
         console.log("SIGNED_URL Error", err);
         return responseEvent({
-            statusCode: 400, payload: "Error creating presigned URL",
+            statusCode: 500, payload: "Error creating presigned URL",
         });
     }
 

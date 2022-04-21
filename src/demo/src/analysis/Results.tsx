@@ -1,4 +1,4 @@
-import { NodeRef, TrackerResponse, TrackerTrace, TrackerUsage, TrackerUsageData } from "../tracker/payloads";
+import { NodeRef, TrackerResponse, TrackerTrace, TrackerUsage, TrackerUsageData } from "../../../tracker/payloads";
 import styles from "./Results.module.scss";
 import { useCallback, useState } from "react";
 import { Collapsible } from "../collapsible/Collapsible";
@@ -6,10 +6,10 @@ import { spell } from "../util/spelling";
 
 export const Results = ({ data }: { data: TrackerResponse }) => {
     return <div>
-        { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings }/> }
+        { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings } /> }
 
         { data.snowflakeUsages.length > 0
-            ? <dl>{ data.snowflakeUsages.map((s, i) => <Component key={ i } { ...s }/>) }</dl>
+            ? <dl>{ data.snowflakeUsages.map((s, i) => <Component key={ i } { ...s } />) }</dl>
             : <>
                 <h2>No snowflakes detected</h2>
                 <p>Radius tracker only supports React at the moment — is the project using React?</p>
@@ -45,10 +45,10 @@ const nodeText = (node: NodeRef, maxLines: number) => {
 
 function Component(props: TrackerUsageData) {
     return <>
-        <dd className={ styles.componentDefinition }><a href={props.target.url}>{ props.target.text }</a> in { nodeFilePath(props.target) }</dd>
+        <dd className={ styles.componentDefinition }><a href={ props.target.url }>{ props.target.text }</a> in { nodeFilePath(props.target) }</dd>
         <dt>
             <pre className={ styles.componentCodeSnippet }>{ nodeText(props.target, 5) }</pre>
-            <ComponentUsages usages={ props.usages }/>
+            <ComponentUsages usages={ props.usages } />
         </dt>
     </>;
 }
@@ -64,7 +64,7 @@ function ComponentUsages({ usages }: Pick<TrackerUsageData, "usages">) {
             : spellUsages(usages.length) }
         <Collapsible open={ expanded }>
             <ul className={ styles.usagesList }>{
-                usages.map((usage, i) => <li key={ i }><SingleComponentUsage { ...usage }/></li>)
+                usages.map((usage, i) => <li key={ i }><SingleComponentUsage { ...usage } /></li>)
             }</ul>
         </Collapsible>
     </>;
@@ -84,7 +84,7 @@ function SingleComponentUsage(props: TrackerUsage) {
 
         <Collapsible open={ expanded }>
             <ul className={ styles.traceList }>{
-                props.trace.map((t, i) => <li key={ i }><Trace trace={ t }/></li>)
+                props.trace.map((t, i) => <li key={ i }><Trace trace={ t } /></li>)
             }</ul>
         </Collapsible>
     </div>;

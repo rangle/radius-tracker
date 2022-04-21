@@ -1,7 +1,7 @@
 import React, { memo, useEffect, useState } from "react";
 import axios from "axios";
 
-import { TrackerResponse } from "../tracker/payloads";
+import { TrackerResponse } from "../../../tracker/payloads";
 import { Results } from "./Results";
 import api from "../api.json";
 

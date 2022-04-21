@@ -15,6 +15,9 @@ import {
     SUPPORTED_FILE_TYPES,
 } from "radius-tracker";
 
+
+import { TrackerResponse } from "../../tracker/payloads";
+
 interface TrackerEvent {
     Records: Array<eventType>,
 }
@@ -22,31 +25,6 @@ interface TrackerEvent {
 type eventType = {
     messageId: string,
     body: string,
-};
-
-type TrackerWarning = {
-    type: string,
-    message: string,
-    node?: NodeRef,
-};
-
-type TrackerUsageData = {
-    target: NodeRef,
-    usages: TrackerUsage[],
-};
-type TrackerUsage = {
-    use: NodeRef,
-    trace: TrackerTrace[],
-    aliasPath: string[],
-};
-type TrackerTrace = {
-    type: string,
-    node: NodeRef,
-};
-
-type TrackerResponse = {
-    warnings: TrackerWarning[],
-    snowflakeUsages: TrackerUsageData[],
 };
 
 type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
@@ -68,10 +46,8 @@ const jsRe = /\.jsx?$/;
 const s3Client = new S3Client({ region: process.env.REGION });
 
 exports.handler = async (event: TrackerEvent) => {
-    let body = "";
-    if (event.Records[0] !== undefined && event.Records[0].body !== undefined) {
-        body = event.Records[0].body;
-    } else {
+    const body = event.Records[0]?.body;
+    if (!body) {
         throw new Error("No data provided with event's body");
     }
     const { Message } = JSON.parse(body);
@@ -85,9 +61,10 @@ exports.handler = async (event: TrackerEvent) => {
         depth: 1,
         singleBranch: true,
         noTags: true,
+        onProgress: progEvent => console.log(`Cloning ${ data.clone_url }: ${ progEvent.phase } ${ [progEvent.loaded, progEvent.total].filter(Boolean).join("/") }`),
     });
 
-    console.log("LAMBDA git cloned");
+    console.log("GIT cloned");
 
     const tsconfigPath = "/tsconfig.json";
     const jsconfigPath = "/jsconfig.json";
@@ -118,9 +95,7 @@ exports.handler = async (event: TrackerEvent) => {
 
     const relevantSourceFiles = project.getSourceFiles().filter(f => !testFileRe.test(f.getFilePath()));
     const snowflakes = relevantSourceFiles
-        .map(f => {
-            return detectSnowflakes(f);
-        })
+        .map(detectSnowflakes)
         .reduce((a, b) => [...a, ...b], []);
 
     const dependencies = resolveDependencies(project, setupModuleResolution(project, "/"));
@@ -205,22 +180,18 @@ const putS3Object = async (response: TrackerResponse, id: number) => {
         Body: JSON.stringify(response),
     };
 
-    console.log("LAMBDA bucketParams => ", bucketParams);
+    console.log("S3 OBJECT bucketParams => ", bucketParams);
 
     // Create and upload the object to the S3 bucket.
-    const run = async () => {
-        try {
-            const data = await s3Client.send(new PutObjectCommand(bucketParams));
-            console.log(
-                `LAMBDA Successfully uploaded object to S3: ${ bucketParams.Bucket }/${ bucketParams.Key }`,
-            );
-            console.log(
-                `LAMBDA Object created with data: ${ data }`,
-            );
-        } catch (err) {
-            console.log("LAMBDA Error on upload object to S3", err);
-        }
-
-    };
-    await run();
+    try {
+        const data = await s3Client.send(new PutObjectCommand(bucketParams));
+        console.log(
+            `S3 OBJECT Successfully uploaded: ${ bucketParams.Bucket }/${ bucketParams.Key }`,
+        );
+        console.log(
+            `S3 OBJECT created with data: ${ data }`,
+        );
+    } catch (err) {
+        console.log("S3 OBJECT error on upload", err);
+    }
 };
