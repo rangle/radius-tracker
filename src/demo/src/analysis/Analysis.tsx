@@ -23,7 +23,14 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
         if (error.response.status === 403) {
             return s3ObjectRetrive(originalRequest);
         }
-        return Promise.reject(error);
+        return Promise.reject({
+            ...error, response: {
+                ...error.response,
+                data: {
+                    payload: "Error retrieving S3 object",
+                },
+            },
+        });
     });
 
     useEffect(() => {
@@ -36,26 +43,24 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
         const {
             api_invoke_url,
         } = api;
-        const listenerResponse = await axios({
-            method: "post",
-            url: `${ api_invoke_url }/snowflakes`,
-            data: githubUrl,
-        });
 
-        if (listenerResponse.status === 200) {
-            s3ObjectRetrive({
+        try {
+            const listenerResponse = await axios({
+                method: "post",
+                url: `${ api_invoke_url }/snowflakes`,
+                data: githubUrl,
+            });
+
+            const result = await s3ObjectRetrive({
                 method: "get",
                 url: `${ listenerResponse.data.payload }`,
-            }).then(res => {
-                setAnalysis(res.data);
-                setAnalysisState("resolved");
-            }).catch(err => {
-                setAnalysisState("rejected");
-                setAnalysisError(err);
             });
-        }
-        else {
-            setAnalysisError(listenerResponse.data.payload);
+
+            setAnalysis(result.data);
+            setAnalysisState("resolved");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
+            setAnalysisError(error.response.data.payload);
             setAnalysisState("rejected");
         }
 

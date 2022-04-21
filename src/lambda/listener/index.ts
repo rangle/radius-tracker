@@ -13,10 +13,7 @@ interface TrackerEvent extends APIGatewayProxyEvent {
     body: string, // Github repo url
 }
 
-
-type TrackerResponseSuccess = { statusCode: 200, payload: string };
-type TrackerResponseFailure = { statusCode: 400, payload: Error };
-type TrackerResponseMessage = TrackerResponseSuccess | TrackerResponseFailure;
+type TrackerResponseMessage = { statusCode: 200 | 400, payload: string };
 
 
 const octokit = new Octokit();
@@ -31,13 +28,13 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     const url = new URL(event.body);
     if (url.hostname !== "github.com") {
         return responseEvent({
-            statusCode: 400, payload: new Error("github.com url expected"),
+            statusCode: 400, payload: "github.com url expected",
         });
     }
     const [, owner, repo] = url.pathname.split("/");
     if (!owner || !repo) {
         return responseEvent({
-            statusCode: 400, payload: new Error("Url does not point to a github repo"),
+            statusCode: 400, payload: "Url does not point to a github repo",
         });
     }
 
@@ -55,7 +52,7 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     } catch (err) {
         console.log("PUBLISH Error.", err);
         return responseEvent({
-            statusCode: 400, payload: new Error("Error publish message to SNS"),
+            statusCode: 400, payload: "Error publish message to SNS",
         });
     }
 
@@ -75,7 +72,7 @@ exports.handler = async (event: TrackerEvent): Promise<APIGatewayProxyResult> =>
     } catch (err) {
         console.log("SIGNED_URL Error", err);
         return responseEvent({
-            statusCode: 400, payload: new Error("Error creating presigned URL"),
+            statusCode: 400, payload: "Error creating presigned URL",
         });
     }
 
