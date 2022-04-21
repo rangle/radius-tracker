@@ -81,7 +81,7 @@ resource "aws_sns_topic_policy" "_" {
     "Statement": [
       {
         "Effect": "Allow",
-        "Principal": "*",
+        "Principal": "${module.listener.lambda_arn}",
         "Action": "SNS:Publish",
         "Resource": "${aws_sns_topic._.arn}"
       }

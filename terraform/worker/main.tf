@@ -98,7 +98,7 @@ resource "aws_iam_policy" "logs_policy_worker" {
 EOF
 }
 
-resource "aws_iam_role_policy" "save_result_objest" {
+resource "aws_iam_role_policy" "save_result_object" {
   name   = "${var.namespace}-save-result-object-policy"
   role   = aws_iam_role._.id
   policy = <<EOF
