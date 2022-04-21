@@ -32,13 +32,6 @@ resource "aws_s3_bucket_acl" "_" {
   acl    = "private"
 }
 
-resource "aws_s3_bucket_versioning" "_" {
-  bucket = aws_s3_bucket._.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
 resource "aws_s3_bucket_policy" "reports" {
   bucket = aws_s3_bucket._.id
   policy = <<EOF
@@ -57,7 +50,7 @@ resource "aws_s3_bucket_policy" "reports" {
   EOF
 }
 
-resource "aws_s3_bucket_cors_configuration" "example" {
+resource "aws_s3_bucket_cors_configuration" "_" {
   bucket = aws_s3_bucket._.bucket
   cors_rule {
     allowed_methods = ["GET"]
