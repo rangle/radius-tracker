@@ -1,6 +1,9 @@
 import { work, cmd } from "tasklauncher";
+import { buildTasks } from "./lib";
 
 const removeLambdaBuildDir = cmd("rm -rf ./src/lambda/build");
+
+const buildLib = buildTasks({ test: false });
 
 const lambdaGenerator = (lambdaName: string) => {
     const createLambdaBuildDir = cmd(`mkdir -p ./src/lambda/build/${ lambdaName }`);
@@ -9,7 +12,7 @@ const lambdaGenerator = (lambdaName: string) => {
 
     const copyPackageJson = cmd(`cp ./src/lambda/${ lambdaName }/package.json ./src/lambda/build/${ lambdaName }/`);
 
-    const installPackages = cmd(`yarn install --cwd ./src/lambda/${ lambdaName }`);
+    const installPackages = work(cmd(`yarn install --cwd ./src/lambda/${ lambdaName } --mutex network`)).after(buildLib);
     const copyNodeModules = cmd(`cp -r ./src/lambda/${ lambdaName }/node_modules ./src/lambda/build/${ lambdaName }/node_modules`);
 
     const installModules = work(copyPackageJson, copyNodeModules).after(installPackages).after(createLambdaBuildDir);

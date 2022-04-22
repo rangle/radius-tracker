@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "aws" {
-  profile = "radius-tracker"
+  region = "us-east-2"
 }
 
 # -----------------------------------------------------------------------------

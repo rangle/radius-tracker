@@ -4,7 +4,7 @@
 
 data "archive_file" "worker" {
   type        = "zip"
-  output_path = "${path.cwd}/../lambda_worker.zip"
+  output_path = "${path.cwd}/lambda_worker.zip"
   source_dir  = "${path.cwd}/src/lambda/build/worker/"
 }
 data "archive_file" "listener" {

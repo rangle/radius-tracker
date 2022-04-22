@@ -20,11 +20,19 @@ jobs:
       - name: Install Yarn 🚧
         if: ${{ env.ACT }}
         run: npm install -g yarn
+      - name: Build Lambda 🛠
+        run: yarn build-lambda
+      - name: Terraform Install 💾
+        if: ${{ env.ACT }}
+        run: |
+          curl -fs https://apt.releases.hashicorp.com/gpg | sudo apt-key add - 
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" 
+          sudo apt-get update && sudo apt-get install -y terraform
       - name: Terraform Init 🏗
         run: terraform -chdir=${{ github.workspace }}/terraform init
-      - name: Terraform Apply
-        run: terraform -chdir=${{ github.workspace }}/terraform apply   
-      - name: Build 🛠
+      - name: Terraform Apply ✅
+        run: terraform -chdir=${{ github.workspace }}/terraform apply -auto-approve
+      - name: Build Demo 🛠
         run: REACT_APP_API_URL=$(terraform -chdir=${{ github.workspace }}/terraform output -json listener_outputs | jq -r '.api_invoke_url') yarn demo-build
       - name: Install Rsync 📚
         if: ${{ env.ACT }}

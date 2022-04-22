@@ -6,13 +6,12 @@ locals {
 # Resources: Lambda
 # -----------------------------------------------------------------------------
 
-resource "null_resource" "_" {
-  triggers = {
-    "source_code_hash" = local.lambda_code_hash
-  }
-  provisioner "local-exec" {
-    command = "aws --profile radius-tracker s3 cp ${var.listener_zip_path} s3://${var.lambda_bucket_id}"
-  }
+resource "aws_s3_object" "_" {
+  bucket = var.lambda_bucket_id
+  key    = basename(var.listener_zip_path)
+  source = var.listener_zip_path
+
+  etag = filemd5(var.listener_zip_path)
 }
 
 resource "aws_iam_role" "_" {
@@ -52,7 +51,7 @@ resource "aws_lambda_function" "_" {
   source_code_hash = local.lambda_code_hash
 
   depends_on = [
-    null_resource._
+    aws_s3_object._
   ]
 
   environment {
