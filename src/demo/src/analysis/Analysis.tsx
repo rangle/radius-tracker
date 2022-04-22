@@ -3,7 +3,6 @@ import axios from "axios";
 
 import { TrackerResponse } from "../../../tracker/payloads";
 import { Results } from "./Results";
-import api from "../api.json";
 
 const unexpected = (val: never) => { throw new Error(`Unexpected value: ${ val }`); };
 
@@ -40,14 +39,11 @@ function Analysis({ githubUrl }: { githubUrl: string }) {
     const analyze = async () => {
         setAnalysisState("loading");
         setAnalysisProgress(initialProgressMessage);
-        const {
-            api_invoke_url,
-        } = api;
 
         try {
             const listenerResponse = await axios({
                 method: "post",
-                url: `${ api_invoke_url }/snowflakes`,
+                url: `${ process.env.REACT_APP_API_URL }/snowflakes`,
                 data: githubUrl,
             });
 

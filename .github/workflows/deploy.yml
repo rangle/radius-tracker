@@ -17,8 +17,12 @@ jobs:
       - name: Install Yarn 🚧
         if: ${{ env.ACT }}
         run: npm install -g yarn
+      - name: Terraform Init 🏗
+        run: terraform -chdir=${{ github.workspace }}/terraform init
+      - name: Terraform Apply
+        run: terraform -chdir=${{ github.workspace }}/terraform apply   
       - name: Build 🛠
-        run: yarn demo-build
+        run: REACT_APP_API_URL=$(terraform -chdir=${{ github.workspace }}/terraform output -json listener_outputs | jq -r '.api_invoke_url') yarn demo-build
       - name: Install Rsync 📚
         if: ${{ env.ACT }}
         run: apt-get update && apt-get install -y rsync

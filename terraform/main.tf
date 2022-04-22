@@ -54,7 +54,7 @@ resource "aws_s3_bucket_cors_configuration" "_" {
   bucket = aws_s3_bucket._.bucket
   cors_rule {
     allowed_methods = ["GET"]
-    allowed_origins = ["*"]
+    allowed_origins = ["https://rangle.github.io"]
   }
 }
 
@@ -144,7 +144,7 @@ EOF
 module "worker" {
   source           = "./worker"
   lambda_bucket_id = aws_s3_bucket._.id
-  worker_zip_path  = "${path.cwd}/../lambda_worker.zip"
+  worker_zip_path  = "${path.cwd}/lambda_worker.zip"
   sqs_queue_arn    = aws_sqs_queue._.arn
   bucket_name      = aws_s3_bucket._.bucket
   bucket_arn       = aws_s3_bucket._.arn
@@ -157,7 +157,7 @@ module "worker" {
 module "listener" {
   source            = "./listener"
   lambda_bucket_id  = aws_s3_bucket._.id
-  listener_zip_path = "${path.cwd}/../lambda_listener.zip"
+  listener_zip_path = "${path.cwd}/lambda_listener.zip"
   sns_arn           = aws_sns_topic._.arn
   bucket_name       = aws_s3_bucket._.bucket
 

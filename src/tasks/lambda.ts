@@ -19,4 +19,4 @@ const lambdaGenerator = (lambdaName: string) => {
 
 export const buildLambda = work(lambdaGenerator("listener"), lambdaGenerator("worker")).after(removeLambdaBuildDir);
 
-
+export const createAPI = cmd("echo \"API_URL=$(terraform output -json listener_outputs | jq '.api_invoke_url')\" > ../.env");

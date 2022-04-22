@@ -25,7 +25,7 @@ function App() {
                 <div className={ styles.restart } onClick={ restart } onKeyPress={ restart } role="button" tabIndex={ 0 }>
                     &larr; <span className={ styles.restartText }>Analyze another repo</span>
                 </div>
-                <Analysis githubUrl={ analysisUrl }/>
+                <Analysis githubUrl={ analysisUrl } />
             </>
             : <>
                 <h1>Radius Tracker</h1>
@@ -33,7 +33,7 @@ function App() {
 
                 <form onSubmit={ onSubmit } className={ styles.form }>
                     <input type="text" value={ currentUrl } onChange={ onUrlChange } className={ styles.input }
-                        placeholder="Github repo url"/>
+                        placeholder="Github repo url" />
                     <button className={ styles.button }>Analyze</button>
                 </form>
                 <div className={ styles.suggestion }>

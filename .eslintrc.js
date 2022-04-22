@@ -4,6 +4,7 @@ module.exports = {
     parser: "@typescript-eslint/parser",
     plugins: [
         "@typescript-eslint",
+        "react",
     ],
     extends: [
         "eslint:recommended",
@@ -89,5 +90,8 @@ module.exports = {
 
         // Indent
         "indent": ["error", 4, { "SwitchCase": 1 , "flatTernaryExpressions": false }],
+
+        //React
+        "react/jsx-tag-spacing": ["error", { "beforeSelfClosing": "always" }],
     },
 };
