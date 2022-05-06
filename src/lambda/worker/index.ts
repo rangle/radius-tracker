@@ -4,7 +4,7 @@ import git from "isomorphic-git";
 import http from "isomorphic-git/http/node";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 import { Volume } from "memfs";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
     detectSnowflakes,
     FindUsageWarning,
@@ -16,16 +16,15 @@ import {
 } from "radius-tracker";
 
 
-import { TrackerResponse } from "../../tracker/payloads";
+import type { AnalysisResult } from "../../shared_types/analysisResult";
+import type { WorkerInitPayload } from "../../shared_types/workerInitPayload";
 
 interface TrackerEvent {
-    Records: Array<eventType>,
+    Records: Array<{
+        messageId: string,
+        body: string,
+    }>,
 }
-
-type eventType = {
-    messageId: string,
-    body: string,
-};
 
 type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
 
@@ -51,17 +50,18 @@ exports.handler = async (event: TrackerEvent) => {
         throw new Error("No data provided with event's body");
     }
     const { Message } = JSON.parse(body);
-    const { owner, repo, data } = JSON.parse(Message);
+    const initData: WorkerInitPayload = JSON.parse(Message);
+    const { owner, repo, cloneUrl, defaultBranch, repoId } = initData;
     const cloneFs = Volume.fromJSON({});
     await git.clone({
         fs: { promises: cloneFs.promises },
         http,
         dir: "/",
-        url: data.clone_url,
+        url: cloneUrl,
         depth: 1,
         singleBranch: true,
         noTags: true,
-        onProgress: progEvent => console.log(`Cloning ${ data.clone_url }: ${ progEvent.phase } ${ [progEvent.loaded, progEvent.total].filter(Boolean).join("/") }`),
+        onProgress: progEvent => console.log(`Cloning ${ cloneUrl }: ${ progEvent.phase } ${ [progEvent.loaded, progEvent.total].filter(Boolean).join("/") }`),
     });
 
     console.log("GIT cloned");
@@ -121,10 +121,10 @@ exports.handler = async (event: TrackerEvent) => {
             text: node.print({ removeComments: true }),
             startLine, endLine,
             context: node.getParent()?.print({ removeComments: true }),
-            url: `https://github.com/${ owner }/${ repo }/blob/${ data.default_branch }${ filepath }#L${ startLine }-L${ endLine }`,
+            url: `https://github.com/${ owner }/${ repo }/blob/${ defaultBranch }${ filepath }#L${ startLine }-L${ endLine }`,
         };
     }
-    const response = {
+    const response: AnalysisResult = {
         warnings: [...dependencies.warnings, ...findUsageWarnings].map(w => ({
             type: w.type,
             message: w.message,
@@ -144,7 +144,7 @@ exports.handler = async (event: TrackerEvent) => {
             })),
     };
 
-    await putS3Object(response, data.id);
+    await putS3Object(response, repoId);
 };
 
 function isFile(fs: MemfsVolume, path: string): boolean {
@@ -170,12 +170,12 @@ function findF(fs: MemfsVolume, path: string): string[] {
     return files;
 }
 
-const putS3Object = async (response: TrackerResponse, id: number) => {
+async function putS3Object(response: AnalysisResult, repoId: string) {
     // Set the parameters.
     const bucketParams = {
         Bucket: process.env.BUCKET_NAME,
         // Specify the name of the new object.
-        Key: `reports/${ id.toString() }`,
+        Key: `reports/${ repoId }`,
         // Content of the new object.
         Body: JSON.stringify(response),
     };
@@ -194,4 +194,4 @@ const putS3Object = async (response: TrackerResponse, id: number) => {
     } catch (err) {
         console.log("S3 OBJECT error on upload", err);
     }
-};
+}

@@ -1,10 +1,10 @@
-import { NodeRef, TrackerResponse, TrackerTrace, TrackerUsage, TrackerUsageData } from "../../../tracker/payloads";
+import { NodeRef, AnalysisResult, AnalysisTrace, AnalysisUsage, AnalysisUsageData } from "../../../shared_types/analysisResult";
 import styles from "./Results.module.scss";
 import { useCallback, useState } from "react";
 import { Collapsible } from "../collapsible/Collapsible";
 import { spell } from "../util/spelling";
 
-export const Results = ({ data }: { data: TrackerResponse }) => {
+export const Results = ({ data }: { data: AnalysisResult }) => {
     return <div>
         { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings } /> }
 
@@ -18,7 +18,7 @@ export const Results = ({ data }: { data: TrackerResponse }) => {
 };
 
 const spellWarnings = spell({ one: "warning", many: "warnings" });
-function Warnings({ warnings }: Pick<TrackerResponse, "warnings">) {
+function Warnings({ warnings }: Pick<AnalysisResult, "warnings">) {
     const [expanded, setExpanded] = useState(false);
     const toggle = useCallback(() => setExpanded(e => !e), [setExpanded]);
 
@@ -43,7 +43,7 @@ const nodeText = (node: NodeRef, maxLines: number) => {
         : context;
 };
 
-function Component(props: TrackerUsageData) {
+function Component(props: AnalysisUsageData) {
     return <>
         <dd className={ styles.componentDefinition }><a href={ props.target.url }>{ props.target.text }</a> in { nodeFilePath(props.target) }</dd>
         <dt>
@@ -54,7 +54,7 @@ function Component(props: TrackerUsageData) {
 }
 
 const spellUsages = spell({ one: "usage", many: "usages" });
-function ComponentUsages({ usages }: Pick<TrackerUsageData, "usages">) {
+function ComponentUsages({ usages }: Pick<AnalysisUsageData, "usages">) {
     const [expanded, setExpanded] = useState(false);
     const toggle = useCallback(() => setExpanded(e => !e), [setExpanded]);
 
@@ -70,7 +70,7 @@ function ComponentUsages({ usages }: Pick<TrackerUsageData, "usages">) {
     </>;
 }
 
-function SingleComponentUsage(props: TrackerUsage) {
+function SingleComponentUsage(props: AnalysisUsage) {
     const [expanded, setExpanded] = useState(false);
     const toggle = useCallback(() => setExpanded(e => !e), [setExpanded]);
 
@@ -90,7 +90,7 @@ function SingleComponentUsage(props: TrackerUsage) {
     </div>;
 }
 
-function Trace({ trace }: { trace: TrackerTrace }) {
+function Trace({ trace }: { trace: AnalysisTrace }) {
     return <div className={ styles.trace }>
         { trace.type } <a href={ trace.node.url }><pre className={ styles.usageCodeSnippet }>{ nodeText(trace.node, 1) }</pre></a>
         in { nodeFilePath(trace.node) }
