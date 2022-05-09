@@ -11,9 +11,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v2
@@ -25,13 +22,19 @@ jobs:
       - name: Terraform Install 💾
         if: ${{ env.ACT }}
         run: |
-          curl -fs https://apt.releases.hashicorp.com/gpg | sudo apt-key add - 
-          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" 
+          curl -fs https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
           sudo apt-get update && sudo apt-get install -y terraform
       - name: Terraform Init 🏗
         run: terraform -chdir=${{ github.workspace }}/terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Terraform Apply ✅
         run: terraform -chdir=${{ github.workspace }}/terraform apply -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Build Demo 🛠
         run: REACT_APP_API_URL=$(terraform -chdir=${{ github.workspace }}/terraform output -json listener_outputs | jq -r '.api_invoke_url') yarn demo-build
       - name: Install Rsync 📚

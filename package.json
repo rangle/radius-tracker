@@ -46,7 +46,6 @@
   },
   "homepage": "https://github.com/rangle/radius-tracker#readme",
   "dependencies": {
-    "axios": "^0.26.1",
     "glob": "^7.2.0",
     "ignore": "^5.2.0",
     "semver": "^7.3.5",
@@ -72,6 +71,7 @@
     "@typescript-eslint/eslint-plugin": "^5.11.0",
     "@typescript-eslint/parser": "^5.11.0",
     "assert": "^2.0.0",
+    "axios": "^0.26.1",
     "babel-jest": "^27.4.6",
     "buffer": "^6.0.3",
     "eslint": "^8.9.0",
@@ -90,8 +90,7 @@
     "ts-toolbelt": "^9.6.0",
     "util": "^0.12.4",
     "verdaccio": "^5.8.0",
-    "verdaccio-memory": "^10.2.0",
-    "worker-loader": "^3.0.8"
+    "verdaccio-memory": "^10.2.0"
   },
   "engines": {
     "node": ">=14.17.0",

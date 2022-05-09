@@ -19,7 +19,7 @@ provider "aws" {
 
 
 resource "aws_s3_bucket" "_" {
-  bucket        = "radius-tracker"
+  bucket        = "radius-tracker-outputs"
   force_destroy = false
 
   tags = {
@@ -160,7 +160,6 @@ module "listener" {
   listener_zip_path = "${path.cwd}/lambda_listener.zip"
   sns_arn           = aws_sns_topic._.arn
   bucket_name       = aws_s3_bucket._.bucket
-
 
   depends_on = [
     data.archive_file.listener
