@@ -17,9 +17,9 @@ describe("Listener lambda", () => {
     let bucketName: string;
 
     let octokit: InjectedOctokit;
-    let snsClient: InjectedSnsClient;
+    let snsClient: jest.Mocked<InjectedSnsClient>;
     let s3Client: InjectedS3Client;
-    let presign: InjectedPresignedUrlGetter;
+    let presign: jest.Mocked<InjectedPresignedUrlGetter>;
 
     let handler: ReturnType<typeof createHandler>;
 
@@ -34,22 +34,27 @@ describe("Listener lambda", () => {
         snsArn = "SNS_ARN_" + Math.random();
         bucketName = "BUCKET_NAME_" + Math.random();
 
-        octokit = {
-            repos: { get: jest.fn().mockResolvedValue({ data: repoData }) },
-        };
+        octokit = { repos: { get: jest.fn().mockResolvedValue({ data: repoData }) } };
         presign = jest.fn().mockResolvedValue(presignedUrl);
 
         snsClient = { send: jest.fn().mockResolvedValue(void 0) };
         s3Client = new S3Client({});
 
-        handler = createHandler(octokit, snsClient, s3Client, presign, {
-            BUCKET_NAME: bucketName,
-            SNS_ARN: snsArn,
-        });
+        handler = createHandler(
+            octokit,
+            snsClient,
+            s3Client,
+            presign,
+            {
+                BUCKET_NAME: bucketName,
+                SNS_ARN: snsArn,
+            },
+        );
     });
     it("should return signedURL", async () => {
         const resp = await handler({ body: baseURL });
         expect(resp.statusCode).toBe(200);
+
     });
 
     it("should return an error when given event body is null", async () => {
@@ -73,16 +78,7 @@ describe("Listener lambda", () => {
     });
 
     it("should return an error if can't publish message to SNS", async () => {
-        handler = createHandler(
-            octokit,
-            { send: jest.fn().mockRejectedValue(new Error()) },
-            s3Client,
-            presign,
-            {
-                BUCKET_NAME: bucketName,
-                SNS_ARN: snsArn,
-            },
-        );
+        snsClient.send.mockRejectedValue(new Error());
         const resp = await handler({ body: baseURL });
         expect(resp.statusCode).toBe(500);
     });
@@ -92,7 +88,7 @@ describe("Listener lambda", () => {
             octokit,
             snsClient,
             s3Client,
-            jest.fn().mockRejectedValue(new Error()),
+            jest.fn().mockRejectedValue(new Error),
             {
                 BUCKET_NAME: bucketName,
                 SNS_ARN: snsArn,
@@ -101,4 +97,7 @@ describe("Listener lambda", () => {
         const resp = await handler({ body: baseURL });
         expect(resp.statusCode).toBe(500);
     });
+
+
 });
+
