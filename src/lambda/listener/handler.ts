@@ -30,8 +30,14 @@ export const createHandler = (
                 statusCode: 400, payload: "event body expected",
             });
         }
-
-        const url = new URL(event.body);
+        let url = undefined;
+        try {
+            url = new URL(event.body);
+        } catch (error) {
+            return responseEvent({
+                statusCode: 400, payload: error as string,
+            });
+        }
         if (url.hostname !== "github.com") {
             return responseEvent({
                 statusCode: 400, payload: "github.com url expected",
