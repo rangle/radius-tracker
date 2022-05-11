@@ -26,3 +26,6 @@ npm-debug.log*
 /lambda_worker.zip
 /lambda_listener.zip
 /terraform/.terraform
+
+# Prettier config
+/.prettierrc
