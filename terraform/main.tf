@@ -19,7 +19,7 @@ provider "aws" {
 
 
 resource "aws_s3_bucket" "_" {
-  bucket        = "radius-tracker-outputs"
+  bucket        = "radius-tracker"
   force_destroy = false
 
   tags = {
