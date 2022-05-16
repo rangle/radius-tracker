@@ -19,7 +19,7 @@ describe("Listener lambda", () => {
     let octokit: InjectedOctokit;
     let snsClient: jest.Mocked<InjectedSnsClient>;
     let s3Client: InjectedS3Client;
-    let presign: jest.Mocked<InjectedPresignedUrlGetter>;
+    let presign: InjectedPresignedUrlGetter;
 
     let handler: ReturnType<typeof createHandler>;
 
