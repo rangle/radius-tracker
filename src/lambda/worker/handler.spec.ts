@@ -79,4 +79,20 @@ describe("Worker lambda", () => {
             err instanceof Error && expect(err.message).toBe("No data provided with event's body");
         }
     });
+
+    it("should throw an error if cloneUrl is not valid", async () => {
+        message = {
+            repo: "test_repo",
+            cloneUrl: "",
+            defaultBranch: "main",
+            repoId: "test_repoId",
+            owner: "test_owner",
+        };
+
+        try {
+            await handler(workerEvent);
+        } catch (err: unknown) {
+            err instanceof Error && expect(err.message).toBe("No data provided with event's body");
+        }
+    })
 });
