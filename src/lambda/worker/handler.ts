@@ -19,7 +19,7 @@ import {
 import type { AnalysisResult } from "../../shared_types/analysisResult";
 import type { WorkerInitPayload } from "../../shared_types/workerInitPayload";
 
-interface TrackerEvent {
+export interface TrackerEvent {
     Records: Array<{
         messageId: string,
         body: string,
@@ -175,7 +175,7 @@ function findF(fs: MemfsVolume, path: string): string[] {
     return files;
 }
 
-async function putS3Object(s3Client: InjectedS3Client, bucketName: string, response: AnalysisResult, repoId: string) {
+export async function putS3Object(s3Client: InjectedS3Client, bucketName: string, response: AnalysisResult, repoId: string) {
     // Set the parameters.
     const bucketParams = {
         Bucket: bucketName,
@@ -185,16 +185,11 @@ async function putS3Object(s3Client: InjectedS3Client, bucketName: string, respo
         Body: JSON.stringify(response),
     };
 
-    console.log("S3 OBJECT bucketParams => ", bucketParams);
-
     // Create and upload the object to the S3 bucket.
     try {
-        const data = await s3Client.send(new PutObjectCommand(bucketParams));
+        await s3Client.send(new PutObjectCommand(bucketParams));
         console.log(
             `S3 OBJECT Successfully uploaded: ${ bucketParams.Bucket }/${ bucketParams.Key }`,
-        );
-        console.log(
-            `S3 OBJECT created with data: ${ data }`,
         );
     } catch (err) {
         console.log("S3 OBJECT error on upload", err);
