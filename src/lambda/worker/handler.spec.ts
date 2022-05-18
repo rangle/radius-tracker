@@ -1,43 +1,40 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
-import { createHandler, InjectedS3Client, TrackerEvent } from "./handler";
-import type { WorkerInitPayload } from "../../shared_types/workerInitPayload";
+import { createHandler, InjectedS3Client } from "./handler";
 
 
 let handler: ReturnType<typeof createHandler>;
 let s3Client: InjectedS3Client;
 let bucketName: string;
-let eventBody: {
-    Message: string,
+
+const message = {
+    repo: "test_repo",
+    cloneUrl: "https://github.com/rangle/radius-tracker.git",
+    defaultBranch: "main",
+    repoId: "test_repoId",
+    owner: "test_owner",
 };
-let message: WorkerInitPayload;
-let workerEvent: TrackerEvent;
+
+const eventBody = {
+    Message: JSON.stringify(message),
+};
+
+const workerEvent = {
+    Records: [
+        {
+            messageId: "test_id",
+            body: JSON.stringify(eventBody),
+        },
+    ],
+};
 
 describe("Worker lambda", () => {
+    jest.useFakeTimers();
+
     beforeEach(() => {
+        jest.runAllTimers();
         s3Client = new S3Client({});
         bucketName = "BUCKET_NAME_" + Math.random();
-
-        message = {
-            repo: "test_repo",
-            cloneUrl: "https://github.com/rangle/radius-tracker.git",
-            defaultBranch: "main",
-            repoId: "test_repoId",
-            owner: "test_owner",
-        },
-
-        eventBody = {
-            Message: JSON.stringify(message),
-        };
-
-        workerEvent = {
-            Records: [
-                {
-                    messageId: "test_id",
-                    body: JSON.stringify(eventBody),
-                },
-            ],
-        };
 
         handler = createHandler(
             s3Client,
@@ -65,7 +62,7 @@ describe("Worker lambda", () => {
     });
 
     it("should throw an error if body is missing", async () => {
-        workerEvent = {
+        const noBodyEvent = {
             Records: [
                 {
                     messageId: "test_id",
@@ -74,25 +71,28 @@ describe("Worker lambda", () => {
             ],
         };
         try {
-            await handler(workerEvent);
+            await handler(noBodyEvent);
         } catch (err: unknown) {
             err instanceof Error && expect(err.message).toBe("No data provided with event's body");
         }
     });
 
     it("should throw an error if cloneUrl is not valid", async () => {
-        message = {
-            repo: "test_repo",
-            cloneUrl: "",
-            defaultBranch: "main",
-            repoId: "test_repoId",
-            owner: "test_owner",
+        const noGitCloneMessage = {
+            cloneUrl: "test",
         };
-
+        const noDataEvent = {
+            Records: [
+                {
+                    messageId: "test_id",
+                    body: JSON.stringify({ Message: JSON.stringify(noGitCloneMessage) }),    
+                },
+            ],
+        };
         try {
-            await handler(workerEvent);
+            await handler(noDataEvent);
         } catch (err: unknown) {
-            err instanceof Error && expect(err.message).toBe("No data provided with event's body");
+            err instanceof Error && expect(err.message).toContain("Cannot parse remote URL:");
         }
-    })
+    });
 });
