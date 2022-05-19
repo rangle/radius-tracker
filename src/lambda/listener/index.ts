@@ -20,10 +20,12 @@ const pickEnv = <T extends string[]>(...keys: T): { [P in T[number]]: string } =
     return pickedEnv as never;
 };
 
+const envs = pickEnv( "REGION");
+
 exports.handler = createHandler(
     new Octokit(),
-    new SNSClient({ region: process.env.REGION }),
-    new S3Client({ region: process.env.REGION }),
+    new SNSClient({ region: envs.REGION }),
+    new S3Client({ region: envs.REGION }),
     getSignedUrl,
     pickEnv(
         "SNS_ARN",

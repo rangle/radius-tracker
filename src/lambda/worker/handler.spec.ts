@@ -4,7 +4,7 @@ import { createHandler, InjectedS3Client } from "./handler";
 
 
 let handler: ReturnType<typeof createHandler>;
-let s3Client: InjectedS3Client;
+let s3Client: Omit<InjectedS3Client, "send"> & Pick<jest.Mocked<InjectedS3Client>, "send">;
 let bucketName: string;
 
 const message = {
@@ -29,11 +29,8 @@ const workerEvent = {
 };
 
 describe("Worker lambda", () => {
-    jest.useFakeTimers();
-
     beforeEach(() => {
-        jest.runAllTimers();
-        s3Client = new S3Client({});
+        s3Client = Object.assign(new S3Client({}), { send: jest.fn().mockResolvedValue(undefined as never) });
         bucketName = "BUCKET_NAME_" + Math.random();
 
         handler = createHandler(
@@ -45,20 +42,17 @@ describe("Worker lambda", () => {
     });
 
     it("should execute successfully", async () => {
-        s3Client.send = jest.fn().mockReturnValue(true),
-        await expect(handler(workerEvent)).toBeTruthy();
+        await expect(handler(workerEvent)).resolves.toBe(undefined);
     });
 
     it("should call s3Client.send method", async () => {
-        const spySend = jest.spyOn(s3Client, "send");
         await handler(workerEvent);
-        expect(spySend).toHaveBeenCalled();
+        expect(s3Client.send).toHaveBeenCalled();
     });
     
     it("should be rejected because bucket doesn't exist", async () => {
-        const spySend = jest.spyOn(s3Client, "send");
         await handler(workerEvent);
-        await expect(spySend).toThrowError();
+        await expect(s3Client.send.mock.calls[0]?.[0]?.input).toHaveProperty("Bucket", bucketName);
     });
 
     it("should throw an error if body is missing", async () => {
@@ -70,11 +64,7 @@ describe("Worker lambda", () => {
                 },
             ],
         };
-        try {
-            await handler(noBodyEvent);
-        } catch (err: unknown) {
-            err instanceof Error && expect(err.message).toBe("No data provided with event's body");
-        }
+        await expect(handler(noBodyEvent)).rejects.toThrowError("No data provided with event's body");
     });
 
     it("should throw an error if cloneUrl is not valid", async () => {
@@ -89,10 +79,6 @@ describe("Worker lambda", () => {
                 },
             ],
         };
-        try {
-            await handler(noDataEvent);
-        } catch (err: unknown) {
-            err instanceof Error && expect(err.message).toContain("Cannot parse remote URL:");
-        }
+        await expect(handler(noDataEvent)).rejects.toThrowError(/Cannot parse remote URL:/i);
     });
 });

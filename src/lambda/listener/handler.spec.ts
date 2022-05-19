@@ -8,6 +8,8 @@ import {
 } from "./handler";
 import { S3Client } from "@aws-sdk/client-s3";
 
+type MockedFn<T> = jest.Mocked<{ fn: T }>["fn"];
+
 describe("Listener lambda", () => {
     const baseURL = "https://github.com/rangle/radius-tracker";
 
@@ -19,7 +21,7 @@ describe("Listener lambda", () => {
     let octokit: InjectedOctokit;
     let snsClient: jest.Mocked<InjectedSnsClient>;
     let s3Client: InjectedS3Client;
-    let presign: InjectedPresignedUrlGetter;
+    let presign: MockedFn<InjectedPresignedUrlGetter>;
 
     let handler: ReturnType<typeof createHandler>;
 
@@ -84,16 +86,7 @@ describe("Listener lambda", () => {
     });
 
     it("should return an error if can't create a presigned URL", async () => {
-        handler = createHandler(
-            octokit,
-            snsClient,
-            s3Client,
-            jest.fn().mockRejectedValue(new Error),
-            {
-                BUCKET_NAME: bucketName,
-                SNS_ARN: snsArn,
-            },
-        );
+        presign.mockRejectedValue(new Error);
         const resp = await handler({ body: baseURL });
         expect(resp.statusCode).toBe(500);
     });

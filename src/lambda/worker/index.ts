@@ -17,11 +17,12 @@ const pickEnv = <T extends string[]>(...keys: T): { [P in T[number]]: string } =
     return pickedEnv as never;
 };
 
+const envs = pickEnv( "REGION");
 
-exports.handler = createHandler(
-    new S3Client({ region: process.env.REGION }),
+
+exports.handler = createHandler( 
+    new S3Client({ region: envs.REGION }),
     pickEnv(
-        "SNS_ARN",
         "BUCKET_NAME",
     ),
 );
