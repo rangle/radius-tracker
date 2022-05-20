@@ -81,17 +81,13 @@ resource "aws_sns_topic_policy" "_" {
     "Statement": [
       {
         "Effect": "Allow",
-        "Principal": "${module.listener.lambda_arn}",
+        "Principal": "*",
         "Action": "SNS:Publish",
         "Resource": "${aws_sns_topic._.arn}"
       }
     ]
   }
   EOF
-
-  depends_on = [
-    module.listener
-  ]
 }
 
 resource "aws_sns_topic_subscription" "_" {
