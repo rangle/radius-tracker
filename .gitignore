@@ -18,3 +18,14 @@ npm-debug.log*
 
 # TS incremental build data
 /.tsbuildinfo
+
+# Lambda related artifacts
+/src/lambda/worker/node_modules
+/src/lambda/listener/node_modules
+/src/lambda/build
+/lambda_worker.zip
+/lambda_listener.zip
+/terraform/.terraform
+
+# Prettier config
+/.prettierrc

@@ -1,11 +1,10 @@
+import { InMemoryFileSystemHost, Node, Project, ProjectOptions } from "ts-morph";
 import { Buffer } from "buffer";
 import git from "isomorphic-git";
-import gitHttp from "isomorphic-git/http/web";
+import http from "isomorphic-git/http/node";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 import { Volume } from "memfs";
-
-import { InMemoryFileSystemHost, Node, Project, ProjectOptions } from "ts-morph";
-import { Octokit } from "@octokit/rest";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
     detectSnowflakes,
     FindUsageWarning,
@@ -16,40 +15,62 @@ import {
     SUPPORTED_FILE_TYPES,
 } from "radius-tracker";
 
-import { NodeRef, TrackerRequest, TrackerResponse, TrackerResponseMessage } from "./payloads";
-import { stringifyError } from "../util/stringifyError";
 
-global.Buffer = Buffer; // TODO: provide via webpack globals
+import type { AnalysisResult } from "../../shared_types/analysisResult";
+import type { WorkerInitPayload } from "../../shared_types/workerInitPayload";
+
+export interface TrackerEvent {
+    Records: Array<{
+        messageId: string,
+        body: string,
+    }>,
+}
+
+type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
+
+type NodeRef = {
+    text: string,
+    startLine: number,
+    endLine: number,
+    filepath: string,
+    context?: string,
+    url: string,
+};
+
+export type InjectedS3Client = S3Client;
 
 const testFileRe = /\.(tests?|specs?|stories|story)\./; // TODO: accept as a parameter
 const yarnDirRe = /\/\.yarn\//;
 const jsRe = /\.jsx?$/;
 
-const octokit = new Octokit();
-async function track(githubUrl: TrackerRequest, reportProgress: (message: string) => void): Promise<TrackerResponse> {
-    const url = new URL(githubUrl);
-    if (url.hostname !== "github.com") { throw new Error("github.com url expected"); }
-    const [,owner, repo] = url.pathname.split("/");
-    if (!owner || !repo) { throw new Error("Url does not point to a github repo"); }
 
-    reportProgress(`Fetching repo metadata for https://github.com/${ owner }/${ repo }`);
-    const repoInfo = await octokit.repos.get({ owner, repo });
-
-    reportProgress(`Cloning ${ repoInfo.data.clone_url }`);
+export const createHandler = ( 
+    s3Client: InjectedS3Client,
+    env: {
+        BUCKET_NAME: string,
+    },
+) => async (event: TrackerEvent) => {
+    const body = event.Records[0]?.body;
+    if (!body) {
+        throw new Error("No data provided with event's body");
+    }
+    const { Message } = JSON.parse(body);
+    const initData: WorkerInitPayload = JSON.parse(Message);
+    const { owner, repo, cloneUrl, defaultBranch, repoId } = initData;
     const cloneFs = Volume.fromJSON({});
     await git.clone({
         fs: { promises: cloneFs.promises },
-        http: gitHttp,
+        http,
         dir: "/",
-        url: repoInfo.data.clone_url,
+        url: cloneUrl,
         depth: 1,
         singleBranch: true,
         noTags: true,
-        corsProxy: "https://cors.isomorphic-git.org", // TODO: get rid of cors proxy
-        onProgress: progEvent => reportProgress(`Cloning ${ repoInfo.data.clone_url }: ${ progEvent.phase } ${ [progEvent.loaded, progEvent.total].filter(Boolean).join("/") }`),
+        onProgress: progEvent => console.log(`Cloning ${ cloneUrl }: ${ progEvent.phase } ${ [progEvent.loaded, progEvent.total].filter(Boolean).join("/") }`),
     });
 
-    reportProgress("Setting up TS compiler");
+    console.log("GIT cloned");
+
     const tsconfigPath = "/tsconfig.json";
     const jsconfigPath = "/jsconfig.json";
 
@@ -65,9 +86,9 @@ async function track(githubUrl: TrackerRequest, reportProgress: (message: string
 
     const isTsProject = isFile(cloneFs, tsconfigPath);
     const config: ProjectOptions =
-          isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
-          : isFile(cloneFs, jsconfigPath) ? { compilerOptions: { ...JSON.parse(readFile(cloneFs, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
-          : { compilerOptions: { allowJs: true } };
+        isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
+            : isFile(cloneFs, jsconfigPath) ? { compilerOptions: { ...JSON.parse(readFile(cloneFs, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
+                : { compilerOptions: { allowJs: true } };
 
     const project = new Project({ ...config, useInMemoryFileSystem: true });
     const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;
@@ -79,20 +100,15 @@ async function track(githubUrl: TrackerRequest, reportProgress: (message: string
 
     const relevantSourceFiles = project.getSourceFiles().filter(f => !testFileRe.test(f.getFilePath()));
     const snowflakes = relevantSourceFiles
-        .map((f, i) => {
-            reportProgress(`Detecting snowflakes in files ${ i + 1 }/${ relevantSourceFiles.length }`);
-            return detectSnowflakes(f);
-        })
+        .map(detectSnowflakes)
         .reduce((a, b) => [...a, ...b], []);
 
-    reportProgress("Resolving import/export dependencies");
     const dependencies = resolveDependencies(project, setupModuleResolution(project, "/"));
 
     const findUsages = setupFindUsages(dependencies);
     const findUsageWarnings: FindUsageWarning[] = [];
 
-    const snowflakeUsageData = snowflakes.map((snowflake, i) => {
-        reportProgress(`Finding snowflake usages ${ i + 1 }/${ snowflakes.length }`);
+    const snowflakeUsageData = snowflakes.map(snowflake => {
 
         const target = snowflake.identifier ?? snowflake.declaration;
         const { usages, warnings } = findUsages(target);
@@ -110,19 +126,19 @@ async function track(githubUrl: TrackerRequest, reportProgress: (message: string
             text: node.print({ removeComments: true }),
             startLine, endLine,
             context: node.getParent()?.print({ removeComments: true }),
-            url: `https://github.com/${ owner }/${ repo }/blob/${ repoInfo.data.default_branch }${ filepath }#L${ startLine }-L${ endLine }`,
+            url: `https://github.com/${ owner }/${ repo }/blob/${ defaultBranch }${ filepath }#L${ startLine }-L${ endLine }`,
         };
     }
-    return {
+    const response: AnalysisResult = {
         warnings: [...dependencies.warnings, ...findUsageWarnings].map(w => ({
             type: w.type,
             message: w.message,
         })),
         snowflakeUsages: snowflakeUsageData
             .sort((a, b) => b.usages.length - a.usages.length)
-            .map(data => ({
-                target: nodeRef(data.target),
-                usages: data.usages.map(u => ({
+            .map(d => ({
+                target: nodeRef(d.target),
+                usages: d.usages.map(u => ({
                     use: nodeRef(u.use),
                     aliasPath: u.aliasPath,
                     trace: u.trace.map(t => ({
@@ -132,9 +148,10 @@ async function track(githubUrl: TrackerRequest, reportProgress: (message: string
                 })),
             })),
     };
-}
 
-type MemfsVolume = ReturnType<(typeof Volume)["fromJSON"]>;
+    await putS3Object(s3Client, env.BUCKET_NAME, response, repoId);
+};
+
 function isFile(fs: MemfsVolume, path: string): boolean {
     return fs.statSync(path, { throwIfNoEntry: false })?.isFile() ?? false;
 }
@@ -158,23 +175,23 @@ function findF(fs: MemfsVolume, path: string): string[] {
     return files;
 }
 
-onmessage = function messageReceived(msg) {
-    const data: TrackerRequest = msg.data;
-
-    const reportProgress = (text: string) => {
-        const message: TrackerResponseMessage = { type: "progress", message: text };
-        this.postMessage(message);
+export async function putS3Object(s3Client: InjectedS3Client, bucketName: string, response: AnalysisResult, repoId: string) {
+    // Set the parameters.
+    const bucketParams = {
+        Bucket: bucketName,
+        // Specify the name of the new object.
+        Key: `reports/${ repoId }`,
+        // Content of the new object.
+        Body: JSON.stringify(response),
     };
 
-    track(data, reportProgress).then(
-        payload => {
-            const message: TrackerResponseMessage = { type: "success", payload };
-            this.postMessage(message);
-        },
-        err => {
-            console.log(err);
-            const message: TrackerResponseMessage = { type: "failure", error: stringifyError(err) };
-            this.postMessage(message);
-        },
-    );
-};
+    // Create and upload the object to the S3 bucket.
+    try {
+        await s3Client.send(new PutObjectCommand(bucketParams));
+        console.log(
+            `S3 OBJECT Successfully uploaded: ${ bucketParams.Bucket }/${ bucketParams.Key }`,
+        );
+    } catch (err) {
+        console.log("S3 OBJECT error on upload", err);
+    }
+}

@@ -4,12 +4,14 @@ module.exports = {
     parser: "@typescript-eslint/parser",
     plugins: [
         "@typescript-eslint",
+        "react",
     ],
     extends: [
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
     ],
-    "rules": {
+    ignorePatterns: ["src/lambda/build/*"],
+    rules: {
         // Usages of `{}` and `object` look fine in this repo
         "@typescript-eslint/ban-types": ["error", {
             "extendDefaults": true,
@@ -87,6 +89,9 @@ module.exports = {
         "template-curly-spacing": ["error", "always"],
 
         // Indent
-        "indent": ["error", 4, { "SwitchCase": 1 , "flatTernaryExpressions": true }],
+        "indent": ["error", 4, { "SwitchCase": 1 , "flatTernaryExpressions": false }],
+
+        //React
+        "react/jsx-tag-spacing": ["error", { "beforeSelfClosing": "always" }],
     },
 };

@@ -1,15 +1,15 @@
-import { NodeRef, TrackerResponse, TrackerTrace, TrackerUsage, TrackerUsageData } from "../tracker/payloads";
+import { NodeRef, AnalysisResult, AnalysisTrace, AnalysisUsage, AnalysisUsageData } from "../../../shared_types/analysisResult";
 import styles from "./Results.module.scss";
 import { useCallback, useState } from "react";
 import { Collapsible } from "../collapsible/Collapsible";
 import { spell } from "../util/spelling";
 
-export const Results = ({ data }: { data: TrackerResponse }) => {
+export const Results = ({ data }: { data: AnalysisResult }) => {
     return <div>
-        { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings }/> }
+        { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings } /> }
 
         { data.snowflakeUsages.length > 0
-            ? <dl>{ data.snowflakeUsages.map((s, i) => <Component key={ i } { ...s }/>) }</dl>
+            ? <dl>{ data.snowflakeUsages.map((s, i) => <Component key={ i } { ...s } />) }</dl>
             : <>
                 <h2>No snowflakes detected</h2>
                 <p>Radius tracker only supports React at the moment — is the project using React?</p>
@@ -18,7 +18,7 @@ export const Results = ({ data }: { data: TrackerResponse }) => {
 };
 
 const spellWarnings = spell({ one: "warning", many: "warnings" });
-function Warnings({ warnings }: Pick<TrackerResponse, "warnings">) {
+function Warnings({ warnings }: Pick<AnalysisResult, "warnings">) {
     const [expanded, setExpanded] = useState(false);
     const toggle = useCallback(() => setExpanded(e => !e), [setExpanded]);
 
@@ -43,18 +43,18 @@ const nodeText = (node: NodeRef, maxLines: number) => {
         : context;
 };
 
-function Component(props: TrackerUsageData) {
+function Component(props: AnalysisUsageData) {
     return <>
-        <dd className={ styles.componentDefinition }><a href={props.target.url}>{ props.target.text }</a> in { nodeFilePath(props.target) }</dd>
+        <dd className={ styles.componentDefinition }><a href={ props.target.url }>{ props.target.text }</a> in { nodeFilePath(props.target) }</dd>
         <dt>
             <pre className={ styles.componentCodeSnippet }>{ nodeText(props.target, 5) }</pre>
-            <ComponentUsages usages={ props.usages }/>
+            <ComponentUsages usages={ props.usages } />
         </dt>
     </>;
 }
 
 const spellUsages = spell({ one: "usage", many: "usages" });
-function ComponentUsages({ usages }: Pick<TrackerUsageData, "usages">) {
+function ComponentUsages({ usages }: Pick<AnalysisUsageData, "usages">) {
     const [expanded, setExpanded] = useState(false);
     const toggle = useCallback(() => setExpanded(e => !e), [setExpanded]);
 
@@ -64,13 +64,13 @@ function ComponentUsages({ usages }: Pick<TrackerUsageData, "usages">) {
             : spellUsages(usages.length) }
         <Collapsible open={ expanded }>
             <ul className={ styles.usagesList }>{
-                usages.map((usage, i) => <li key={ i }><SingleComponentUsage { ...usage }/></li>)
+                usages.map((usage, i) => <li key={ i }><SingleComponentUsage { ...usage } /></li>)
             }</ul>
         </Collapsible>
     </>;
 }
 
-function SingleComponentUsage(props: TrackerUsage) {
+function SingleComponentUsage(props: AnalysisUsage) {
     const [expanded, setExpanded] = useState(false);
     const toggle = useCallback(() => setExpanded(e => !e), [setExpanded]);
 
@@ -84,13 +84,13 @@ function SingleComponentUsage(props: TrackerUsage) {
 
         <Collapsible open={ expanded }>
             <ul className={ styles.traceList }>{
-                props.trace.map((t, i) => <li key={ i }><Trace trace={ t }/></li>)
+                props.trace.map((t, i) => <li key={ i }><Trace trace={ t } /></li>)
             }</ul>
         </Collapsible>
     </div>;
 }
 
-function Trace({ trace }: { trace: TrackerTrace }) {
+function Trace({ trace }: { trace: AnalysisTrace }) {
     return <div className={ styles.trace }>
         { trace.type } <a href={ trace.node.url }><pre className={ styles.usageCodeSnippet }>{ nodeText(trace.node, 1) }</pre></a>
         in { nodeFilePath(trace.node) }
