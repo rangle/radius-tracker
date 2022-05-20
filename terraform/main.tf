@@ -88,6 +88,10 @@ resource "aws_sns_topic_policy" "_" {
     ]
   }
   EOF
+
+  depends_on = [
+    module.listener
+  ]
 }
 
 resource "aws_sns_topic_subscription" "_" {
@@ -99,8 +103,8 @@ resource "aws_sns_topic_subscription" "_" {
 resource "aws_sqs_queue" "_" {
   name                       = "${var.namespace}-listener-queue"
   redrive_policy             = "{\"deadLetterTargetArn\":\"${aws_sqs_queue.dl_queue.arn}\",\"maxReceiveCount\":5}"
-  visibility_timeout_seconds = 60
-  message_retention_seconds  = 60
+  visibility_timeout_seconds = 300
+  message_retention_seconds  = 300
 
   tags = {
     project = "radiustracker"
