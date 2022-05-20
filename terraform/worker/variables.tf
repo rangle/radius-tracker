@@ -11,7 +11,7 @@ variable "lambda_bucket_id" {
 variable "namespace" {
   description = "Infrastructure namespace"
   type        = string
-  default     = "radius-tracker"
+  default     = "radius-tracker-resources"
 }
 
 variable "sqs_queue_arn" {
