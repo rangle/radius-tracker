@@ -37,6 +37,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Build Demo 🛠
         run: REACT_APP_API_URL=$(terraform -chdir=${{ github.workspace }}/terraform output -json listener_outputs | jq -r '.api_invoke_url') yarn demo-build
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Install Rsync 📚
         if: ${{ env.ACT }}
         run: apt-get update && apt-get install -y rsync
