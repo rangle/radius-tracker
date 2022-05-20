@@ -15,7 +15,7 @@ variable "sns_arn" {
 variable "namespace" {
   description = "Infrastructure namespace"
   type        = string
-  default     = "radius-tracker"
+  default     = "radius-tracker-resources"
 }
 
 variable "aws_region" {
