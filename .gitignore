@@ -7,7 +7,6 @@
 # Demo related artifacts
 /src/demo/node_modules
 /src/demo/package-lock.json
-/src/demo/yarn.lock
 /src/demo/build
 
 # Misc
@@ -29,3 +28,8 @@ npm-debug.log*
 
 # Prettier config
 /.prettierrc
+
+# Docs
+src/docs/node_modules
+src/docs/build
+src/docs/.parcel-cache
