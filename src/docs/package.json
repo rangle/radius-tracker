@@ -13,10 +13,12 @@
     "docs-dev": "parcel --dist-dir build",
     "docs-build": "parcel build"
   },
-  "source": "src/docs.html",
+  "source": "src/index.html",
   "targets": {
     "default": {
-      "distDir": "./build"
+      "distDir": "./build",
+      "sourceMap": false,
+      "publicUrl": "./"
     }
   }
 }
