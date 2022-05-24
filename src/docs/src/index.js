@@ -1,6 +1,6 @@
 import Markdoc from "@markdoc/markdoc";
 
-const source = "# Markdoc";
+const source = " # What is Markdoc? ";
 
 const ast = Markdoc.parse(source);
 const content = Markdoc.transform(ast);
