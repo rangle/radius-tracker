@@ -11,7 +11,7 @@
   },
   "scripts": {
     "docs-dev": "parcel src/pages/*.html --dist-dir build --no-source-maps",
-    "docs-build": "parcel src/pages/*.html build"
+    "docs-build": "parcel build src/pages/*.html"
   },
   "targets": {
     "default": {
