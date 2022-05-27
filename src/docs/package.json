@@ -10,10 +10,9 @@
     "parcel": "^2.5.0"
   },
   "scripts": {
-    "docs-dev": "parcel --dist-dir build",
-    "docs-build": "parcel build"
+    "docs-dev": "parcel src/pages/*.html --dist-dir build --no-source-maps",
+    "docs-build": "parcel src/pages/*.html build"
   },
-  "source": "src/index.html",
   "targets": {
     "default": {
       "distDir": "./build",
