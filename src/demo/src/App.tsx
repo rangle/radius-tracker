@@ -20,6 +20,9 @@ function App() {
     }, [setAnalysisUrl, setCurrentUrl]);
 
     return <div className={ styles.wrapper }>
+        <div className={styles.docs}>
+            <a href="./docs" target="_blank">Docs</a>
+        </div>
         { analysisUrl
             ? <>
                 <div className={ styles.restart } onClick={ restart } onKeyPress={ restart } role="button" tabIndex={ 0 }>
