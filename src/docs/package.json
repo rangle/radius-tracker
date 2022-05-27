@@ -1,0 +1,23 @@
+{
+  "name": "radius-tracker-documentation",
+  "version": "0.0.1",
+  "private": true,
+  "description": "documentation site for radius tracker",
+  "dependencies": {
+    "@markdoc/markdoc": "^0.1.2"
+  },
+  "devDependencies": {
+    "parcel": "^2.5.0"
+  },
+  "scripts": {
+    "docs-dev": "parcel src/pages/*.html --dist-dir build --no-source-maps",
+    "docs-build": "parcel build src/pages/*.html"
+  },
+  "targets": {
+    "default": {
+      "distDir": "./build",
+      "sourceMap": false,
+      "publicUrl": "./"
+    }
+  }
+}

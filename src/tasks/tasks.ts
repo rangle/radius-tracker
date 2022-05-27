@@ -5,6 +5,8 @@ import { test, lint, jest, buildTasks } from "./lib";
 
 import { buildLambda, createAPI } from "./lambda";
 
+import { buildDocs } from "./docs";
+
 yargs(hideBin(process.argv))
     .command(
         "test", "Execute the test suite",
@@ -35,6 +37,10 @@ yargs(hideBin(process.argv))
     .command(
         "build-lambda", "Build lambdas",
         () => exec(buildLambda),
+    )
+    .command(
+        "build-docs", "Build docs",
+        () => exec(buildDocs),
     )
     .command(
         "create-api", "Perform environment setup",
