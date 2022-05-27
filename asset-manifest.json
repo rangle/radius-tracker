@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/radius-tracker/static/css/main.5d36a92d.css",
-    "main.js": "/radius-tracker/static/js/main.2a20735d.js",
+    "main.js": "/radius-tracker/static/js/main.857b92b7.js",
     "index.html": "/radius-tracker/index.html",
     "main.5d36a92d.css.map": "/radius-tracker/static/css/main.5d36a92d.css.map",
-    "main.2a20735d.js.map": "/radius-tracker/static/js/main.2a20735d.js.map"
+    "main.857b92b7.js.map": "/radius-tracker/static/js/main.857b92b7.js.map"
   },
   "entrypoints": [
     "static/css/main.5d36a92d.css",
-    "static/js/main.2a20735d.js"
+    "static/js/main.857b92b7.js"
   ]
 }
