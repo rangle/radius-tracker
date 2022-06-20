@@ -84,7 +84,7 @@ export const createHandler = (
         },
     });
 
-    console.log("GIT cloned");
+    console.log("GIT cloned, setting up ts-morph project");
 
     const tsconfigPath = "/tsconfig.json";
     const jsconfigPath = "/jsconfig.json";
@@ -116,17 +116,20 @@ export const createHandler = (
     // Drop the cloneFS data — it's already handled at this point.
     // Await serves as a GC opportunity.
     await cloneFs.reset();
+    console.log("Project set up. Detecting homebrew.");
 
     const relevantSourceFiles = project.getSourceFiles().filter(f => !testFileRe.test(f.getFilePath()));
     const homebrew = relevantSourceFiles
         .map(detectHomebrew)
         .reduce((a, b) => [...a, ...b], []);
 
+    console.log(`Found ${ homebrew.length } homebrew components. Resolving project dependencies.`);
     const dependencies = resolveDependencies(project, setupModuleResolution(project, "/"));
 
     const findUsages = setupFindUsages(dependencies);
     const findUsageWarnings: FindUsageWarning[] = [];
 
+    console.log("Finding usages");
     const homebrewUsages = homebrew.map(component => {
         const target = component.identifier ?? component.declaration;
         const { usages, warnings } = findUsages(target);
@@ -135,6 +138,7 @@ export const createHandler = (
         return { target, usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())) };
     });
 
+    console.log(`Found ${ homebrewUsages.length } usages. Processing results.`);
     function nodeRef(node: tsMorph.Node): NodeRef {
         const filepath = node.getSourceFile().getFilePath();
         const startLine = node.getStartLineNumber(true);
