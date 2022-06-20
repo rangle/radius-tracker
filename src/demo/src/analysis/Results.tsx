@@ -6,6 +6,8 @@ import { spell } from "../util/spelling";
 
 export const Results = ({ data }: { data: AnalysisResult }) => {
     return <div>
+        { data.capped && <div>Results were truncated, because the repo is too big</div> }
+
         { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings } /> }
 
         { data.homebrewUsages.length > 0

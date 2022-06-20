@@ -41,9 +41,10 @@ type NodeRef = {
 
 export type InjectedS3Client = S3Client;
 
-const testFileRe = /\.(tests?|specs?|stories|story)\./; // TODO: accept as a parameter
+const testFileRe = /((\.(tests?|specs?|stories|story)\.)|(\/node_modules\/)|(\/__mocks__\/)|(\.d\.ts$))/; // TODO: accept as a parameter
 const yarnDirRe = /\/\.yarn\//;
 const jsRe = /\.jsx?$/;
+const MAX_USAGE_DETECTION_SECONDS = 300;
 
 
 export const createHandler = (
@@ -65,6 +66,7 @@ export const createHandler = (
         return;
     }
 
+    const processingStart = Date.now();
     const cloneFs = Volume.fromJSON({});
 
     let prevPhase: string | null = null;
@@ -130,13 +132,23 @@ export const createHandler = (
     const findUsageWarnings: FindUsageWarning[] = [];
 
     console.log("Finding usages");
-    const homebrewUsages = homebrew.map(component => {
-        const target = component.identifier ?? component.declaration;
-        const { usages, warnings } = findUsages(target);
-        findUsageWarnings.push(...warnings);
+    let timedout = false;
+    function* cappedDetectUsages() {
+        for (const component of homebrew) {
+            const target = component.identifier ?? component.declaration;
+            const { usages, warnings } = findUsages(target);
+            findUsageWarnings.push(...warnings);
 
-        return { target, usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())) };
-    });
+            yield { target, usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())) };
+
+            if ((Date.now() - processingStart) / 1000 > MAX_USAGE_DETECTION_SECONDS) {
+                console.log("Usage detection capped on timeout");
+                timedout = true;
+                return;
+            }
+        }
+    }
+    const homebrewUsages = Array.from(cappedDetectUsages());
 
     console.log(`Found ${ homebrewUsages.length } usages. Processing results.`);
     function nodeRef(node: tsMorph.Node): NodeRef {
@@ -152,6 +164,7 @@ export const createHandler = (
         };
     }
     const response: AnalysisResult = {
+        capped: timedout,
         warnings: [...dependencies.warnings, ...findUsageWarnings].map(w => ({
             type: w.type,
             message: w.message,
