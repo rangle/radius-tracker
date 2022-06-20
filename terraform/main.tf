@@ -27,6 +27,24 @@ resource "aws_s3_bucket" "_" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "_" {
+  bucket = aws_s3_bucket._.id
+
+  rule {
+    id = "rule-1"
+
+    expiration {
+      days = 30
+    }
+
+    filter {
+      prefix = "reports/"
+    }
+
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_acl" "_" {
   bucket = aws_s3_bucket._.id
   acl    = "private"
