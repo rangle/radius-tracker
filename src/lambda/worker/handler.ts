@@ -60,7 +60,10 @@ export const createHandler = (
     const initData: WorkerInitPayload = JSON.parse(Message);
     const { owner, repo, cloneUrl, defaultBranch, repoId } = initData;
 
-    if (await s3ObjectExists(s3Client, env.BUCKET_NAME, repoId)) { return; }
+    if (await s3ObjectExists(s3Client, env.BUCKET_NAME, repoId)) {
+        console.log("Worker short-circuit: object already exists");
+        return;
+    }
 
     const cloneFs = Volume.fromJSON({});
 
