@@ -6,7 +6,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
     tsMorph,
     tsMorphCommon,
-    detectSnowflakes,
+    detectHomebrew,
     FindUsageWarning,
     getTraceNode,
     resolveDependencies,
@@ -101,8 +101,8 @@ export const createHandler = (
         .map(f => project.createSourceFile(f, readFile(cloneFs, f)));
 
     const relevantSourceFiles = project.getSourceFiles().filter(f => !testFileRe.test(f.getFilePath()));
-    const snowflakes = relevantSourceFiles
-        .map(detectSnowflakes)
+    const homebrew = relevantSourceFiles
+        .map(detectHomebrew)
         .reduce((a, b) => [...a, ...b], []);
 
     const dependencies = resolveDependencies(project, setupModuleResolution(project, "/"));
@@ -110,9 +110,8 @@ export const createHandler = (
     const findUsages = setupFindUsages(dependencies);
     const findUsageWarnings: FindUsageWarning[] = [];
 
-    const snowflakeUsageData = snowflakes.map(snowflake => {
-
-        const target = snowflake.identifier ?? snowflake.declaration;
+    const homebrewUsages = homebrew.map(component => {
+        const target = component.identifier ?? component.declaration;
         const { usages, warnings } = findUsages(target);
         findUsageWarnings.push(...warnings);
 
@@ -136,7 +135,7 @@ export const createHandler = (
             type: w.type,
             message: w.message,
         })),
-        snowflakeUsages: snowflakeUsageData
+        homebrewUsages: homebrewUsages
             .sort((a, b) => b.usages.length - a.usages.length)
             .map(d => ({
                 target: nodeRef(d.target),

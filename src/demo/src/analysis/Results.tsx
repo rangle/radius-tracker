@@ -8,10 +8,10 @@ export const Results = ({ data }: { data: AnalysisResult }) => {
     return <div>
         { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings } /> }
 
-        { data.snowflakeUsages.length > 0
-            ? <dl>{ data.snowflakeUsages.map((s, i) => <Component key={ i } { ...s } />) }</dl>
+        { data.homebrewUsages.length > 0
+            ? <dl>{ data.homebrewUsages.map((s, i) => <Component key={ i } { ...s } />) }</dl>
             : <>
-                <h2>No snowflakes detected</h2>
+                <h2>No homebrew components detected</h2>
                 <p>Radius tracker only supports React at the moment — is the project using React?</p>
             </> }
     </div>;

@@ -16,7 +16,7 @@ export interface ComponentDeclaration {
     identifier?: Identifier, // Identifier does not exists for inline declaration, e.g. `higherOrder(() => <div/>)`
 }
 
-const isPossibleSnowflakeDeclaration = isEither(
+const isPossibleComponentDeclaration = isEither(
     Node.isFunctionDeclaration,
     Node.isFunctionExpression,
     Node.isArrowFunction,
@@ -38,10 +38,10 @@ const isBuiltInJsx = (node: Node) => {
     return firstChar.toLowerCase() === firstChar; // Lowercase first character denotes dom tag
 };
 
-export function detectSnowflakes(file: SourceFile): ReadonlyArray<ComponentDeclaration> {
-    const detectedSnowflakes = file
+export function detectHomebrew(file: SourceFile): ReadonlyArray<ComponentDeclaration> {
+    const detectedComponents = file
         .forEachDescendantAsArray()
-        .filter(isPossibleSnowflakeDeclaration)
+        .filter(isPossibleComponentDeclaration)
         .map(declaration => {
             // If there's no JSX inside the declaration — ignore.
             // It's either something entirely unrelated, or a compositional component.
@@ -80,7 +80,7 @@ export function detectSnowflakes(file: SourceFile): ReadonlyArray<ComponentDecla
         })
         .filter(isNotNull);
 
-    return detectedSnowflakes.filter(({ declaration }) => detectedSnowflakes.every(other => {
+    return detectedComponents.filter(({ declaration }) => detectedComponents.every(other => {
         if (other.declaration === declaration) { return true; }
         const match = declaration.getParentWhile(parent => parent !== other.declaration);
         return !match || Node.isSourceFile(match);

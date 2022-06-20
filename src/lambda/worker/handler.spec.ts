@@ -1,4 +1,4 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { HeadObjectCommand, NotFound, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import { createHandler, InjectedS3Client } from "./handler";
 
@@ -30,7 +30,14 @@ const workerEvent = {
 
 describe("Worker lambda", () => {
     beforeEach(() => {
-        s3Client = Object.assign(new S3Client({}), { send: jest.fn().mockResolvedValue(undefined as never) });
+        s3Client = Object.assign(new S3Client({}), {
+            send: jest.fn().mockImplementation(async (command: HeadObjectCommand | PutObjectCommand | unknown) => {
+                if (command instanceof HeadObjectCommand) { throw new NotFound({ $metadata: {} }); }
+                if (command instanceof PutObjectCommand) { return undefined as never; }
+
+                throw new Error(`Unknown command: ${ command }`);
+            }),
+        });
         bucketName = "BUCKET_NAME_" + Math.random();
 
         handler = createHandler(
@@ -49,7 +56,7 @@ describe("Worker lambda", () => {
         await handler(workerEvent);
         expect(s3Client.send).toHaveBeenCalled();
     });
-    
+
     it("should be rejected because bucket doesn't exist", async () => {
         await handler(workerEvent);
         await expect(s3Client.send.mock.calls[0]?.[0]?.input).toHaveProperty("Bucket", bucketName);
@@ -60,7 +67,7 @@ describe("Worker lambda", () => {
             Records: [
                 {
                     messageId: "test_id",
-                    body: "",    
+                    body: "",
                 },
             ],
         };
@@ -75,7 +82,7 @@ describe("Worker lambda", () => {
             Records: [
                 {
                     messageId: "test_id",
-                    body: JSON.stringify({ Message: JSON.stringify(noGitCloneMessage) }),    
+                    body: JSON.stringify({ Message: JSON.stringify(noGitCloneMessage) }),
                 },
             ],
         };

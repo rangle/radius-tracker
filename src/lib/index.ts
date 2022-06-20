@@ -70,7 +70,7 @@ export {
     getExportFile,
 } from "./resolveDependencies/identifyExports";
 
-export { detectSnowflakes } from "./detectSnowflakes/detectSnowflakes";
+export { detectHomebrew } from "./detectHomebrew/detectHomebrew";
 export { resolveDependencies } from "./resolveDependencies/resolveDependencies";
 export { setupModuleResolution } from "./resolveModule/resolveModule";
 export { setupFindUsages, getTraceNode } from "./findUsages/findUsages";
