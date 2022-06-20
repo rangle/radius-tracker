@@ -1160,4 +1160,10 @@ describe("findUsages", () => { // TODO: test traces
         `);
         assertUsagesFound();
     });
+
+    // TODO: test PropertyDeclaration
+    // Identifier 'PanelContextRoot' in 'export class CanvasPanel extends Component<Props, State> {
+    //     static contextType = PanelContextRoot;
+    //     ...
+    // }
 });

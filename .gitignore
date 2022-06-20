@@ -29,3 +29,9 @@ npm-debug.log*
 
 # Prettier config
 /.prettierrc
+
+# CLI cache
+/radius-tracker-cache
+
+# CLI output
+/usages.sqlite

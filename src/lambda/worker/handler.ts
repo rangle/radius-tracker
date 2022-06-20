@@ -1,11 +1,11 @@
-import { InMemoryFileSystemHost, Node, Project, ProjectOptions } from "ts-morph";
 import { Buffer } from "buffer";
 import git from "isomorphic-git";
 import http from "isomorphic-git/http/node";
-import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 import { Volume } from "memfs";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
+    tsMorph,
+    tsMorphCommon,
     detectSnowflakes,
     FindUsageWarning,
     getTraceNode,
@@ -15,9 +15,11 @@ import {
     SUPPORTED_FILE_TYPES,
 } from "radius-tracker";
 
-
 import type { AnalysisResult } from "../../shared_types/analysisResult";
 import type { WorkerInitPayload } from "../../shared_types/workerInitPayload";
+
+const { InMemoryFileSystemHost, Project } = tsMorph;
+const { TransactionalFileSystem, TsConfigResolver } = tsMorphCommon;
 
 export interface TrackerEvent {
     Records: Array<{
@@ -44,7 +46,7 @@ const yarnDirRe = /\/\.yarn\//;
 const jsRe = /\.jsx?$/;
 
 
-export const createHandler = ( 
+export const createHandler = (
     s3Client: InjectedS3Client,
     env: {
         BUCKET_NAME: string,
@@ -85,7 +87,7 @@ export const createHandler = (
     };
 
     const isTsProject = isFile(cloneFs, tsconfigPath);
-    const config: ProjectOptions =
+    const config: tsMorph.ProjectOptions =
         isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
             : isFile(cloneFs, jsconfigPath) ? { compilerOptions: { ...JSON.parse(readFile(cloneFs, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
                 : { compilerOptions: { allowJs: true } };
@@ -117,7 +119,7 @@ export const createHandler = (
         return { target, usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())) };
     });
 
-    function nodeRef(node: Node): NodeRef {
+    function nodeRef(node: tsMorph.Node): NodeRef {
         const filepath = node.getSourceFile().getFilePath();
         const startLine = node.getStartLineNumber(true);
         const endLine = node.getEndLineNumber();

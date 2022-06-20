@@ -37,7 +37,17 @@ export const setupModuleResolution = (project: Project, cwd: string): ResolveMod
         }
 
         if (resolvedModule.isExternalLibraryImport) { return null; }
-        return project.getSourceFileOrThrow(resolvedModule.resolvedFileName);
+
+        const f = project.getSourceFile(resolvedModule.resolvedFileName);
+        if (!f) {
+            if (!SUPPORTED_FILE_TYPES.some(ext => moduleName.endsWith(ext))) { // TODO: test when a supported file references an existing not supported file path
+                return null;
+            }
+
+            throw new Error(`File not found: ${ resolvedModule.resolvedFileName }`);
+        }
+
+        return f;
     };
 };
 

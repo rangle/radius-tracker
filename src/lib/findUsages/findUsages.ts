@@ -2,16 +2,36 @@ import { CallExpression, Node, SpreadElement } from "ts-morph";
 import { ValueExport } from "../resolveDependencies/identifyExports";
 import { getImportNode, Import } from "../resolveDependencies/identifyImports";
 import { ResolveDependencies } from "../resolveDependencies/resolveDependencies";
-import { atLeastOne, isNot, isNotNull, unexpected } from "../guards";
+import { atLeastOne, isEither, isNot, isNotNull, unexpected } from "../guards";
 
 const getStatement = (node: Node) => Node.isStatement(node) ? node : node.getAncestors().find(Node.isStatement);
-export const describeNode = (node: Node) => `${ node.getKindName() } '${ node.print({ removeComments: true }) }' in '${ getStatement(node)?.print() ?? "no statement" }'`; // TODO: extract into a shared util
+const printNode = (node: Node): string => {
+    try {
+        return node.print({ removeComments: true });
+    } catch (_ignore) {
+        const parent = node.getParent();
+        if (!parent) { return node.getKindName(); }
+        return `${ node.getKindName() } in ${ printNode(parent) }`;
+    }
+};
+export const describeNode = (node: Node) => {
+    const statement = getStatement(node);
+    return `${ node.getKindName() } '${ printNode(node) }' in '${ statement ? printNode(statement) : "no statement" }'`;
+};
 
 export type Trace = TraceExport | TraceImport | TraceHoc | TraceRef;
+
 export type TraceExport = { type: "export", exp: ValueExport };
+export const isTraceExport = (trace: Trace): trace is TraceExport => trace.type === "export";
+
 export type TraceImport = { type: "import", imp: Import };
+export const isTraceImport = (trace: Trace): trace is TraceImport => trace.type === "import";
+
 export type TraceHoc = { type: "higher-order", node: CallExpression };
+export const isTraceHoc = (trace: Trace): trace is TraceHoc => trace.type === "higher-order";
+
 export type TraceRef = { type: "ref", node: Node };
+export const isTraceRef = (trace: Trace): trace is TraceRef => trace.type === "ref";
 
 export const getTraceNode = (trace: Trace): Node => {
     switch (trace.type) {
@@ -149,6 +169,8 @@ const isIdentifierDefinitionParent = (node: Node, warn: Warn): boolean => {
     return false; // Not a definition node by default
 };
 
+const isTypeDeclaration = isEither(Node.isTypeAliasDeclaration, Node.isInterfaceDeclaration);
+
 // Is the node on the right hand side a valid usage position for a ref?
 const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     const parent = node.getParent();
@@ -165,6 +187,9 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
         return false;
     }
 
+    if (node.getAncestors().some(Node.isJSDoc)) { return false; } // JSDoc entries aren't usages
+    if (node.getAncestors().some(isTypeDeclaration)) { return false; } // Anything inside type declaration isn't a usage
+
     if (Node.isExportAssignment(parent)) { return false; }
     if (Node.isExportSpecifier(parent)) { return false; }
     if (Node.isImportSpecifier(parent)) { return false; }
@@ -179,8 +204,10 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     if (Node.isFunctionDeclaration(parent)) { return false; } // This happens for function overloads in TS
     if (Node.isTypeQuery(parent)) { return false; } // Usage in type queries shouldn't count
     if (Node.isQualifiedName(parent)) { return false; } // Usage in type queries shouldn't count
+    if (Node.isPropertySignature(parent)) { return false; } // Usage in type definitions shouldn't count // TODO: test
     if (Node.isTypeOfExpression(parent)) { return false; } // Usage in `typeof <x>` JS expression shouldn't count
     if (Node.isTypeReference(parent)) { return false; } // Usage in `typeof <x>` JS expression shouldn't count
+    if (Node.isNamedImports(parent)) { return false; } // `SyntaxList` case from https://github.com/excalidraw/excalidraw/blob/bf6d0eeef7ea73525484fe680fd72f46ab490d51/src/actions/actionMenu.tsx#L1 — can't reproduce in tests
 
     if (Node.isJsxExpression(parent)) { return true; }
     if (Node.isJsxOpeningElement(parent)) { return true; }
@@ -203,6 +230,7 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     if (Node.isJsxSpreadAttribute(parent)) { return true; }
     if (Node.isAsExpression(parent)) { return true; }
     if (Node.isBindingElement(parent)) { return true; }
+    if (Node.isNewExpression(parent)) { return true; } // TODO: test: Identifier 'JsonExplorer' in 'const jsonExp = new JsonExplorer(jsonObject, expansionLevel, { animateOpen: true });'
 
     warn({
         type: "find-usage-unhandled-node-type",
@@ -313,6 +341,7 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
     if (Node.isPropertyDeclaration(node)) { return []; }
     if (Node.isJsxSpreadAttribute(node)) { return []; }
     if (Node.isTypeReference(node)) { return []; }
+    if (node.getKindName() === "SyntaxList") { return []; } // Case from https://github.com/excalidraw/excalidraw/blob/bf6d0eeef7ea73525484fe680fd72f46ab490d51/src/actions/actionMenu.tsx#L1 — can't reproduce in tests
 
     if (Node.isParenthesizedExpression(node)) {
         // TODO: When is stepping into the parentheses useful?
