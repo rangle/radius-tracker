@@ -2,7 +2,7 @@ import { Buffer } from "buffer";
 import git from "isomorphic-git";
 import http from "isomorphic-git/http/node";
 import { Volume } from "memfs";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
     tsMorph,
     tsMorphCommon,
@@ -59,7 +59,12 @@ export const createHandler = (
     const { Message } = JSON.parse(body);
     const initData: WorkerInitPayload = JSON.parse(Message);
     const { owner, repo, cloneUrl, defaultBranch, repoId } = initData;
+
+    if (await s3ObjectExists(s3Client, env.BUCKET_NAME, repoId)) { return; }
+
     const cloneFs = Volume.fromJSON({});
+
+    let prevPhase: string | null = null;
     await git.clone({
         fs: { promises: cloneFs.promises },
         http,
@@ -68,7 +73,12 @@ export const createHandler = (
         depth: 1,
         singleBranch: true,
         noTags: true,
-        onProgress: progEvent => console.log(`Cloning ${ cloneUrl }: ${ progEvent.phase } ${ [progEvent.loaded, progEvent.total].filter(Boolean).join("/") }`),
+        onProgress: progEvent => {
+            if (progEvent.phase === prevPhase) { return; } // Skip further logging for same phase
+
+            prevPhase = progEvent.phase;
+            console.log(`Cloning ${ cloneUrl }: ${ progEvent.phase }`);
+        },
     });
 
     console.log("GIT cloned");
@@ -99,6 +109,10 @@ export const createHandler = (
         .filter(f => allowJs || !jsRe.test(f))
         .filter(f => !yarnDirRe.test(f))
         .map(f => project.createSourceFile(f, readFile(cloneFs, f)));
+
+    // Drop the cloneFS data — it's already handled at this point.
+    // Await serves as a GC opportunity.
+    await cloneFs.reset();
 
     const relevantSourceFiles = project.getSourceFiles().filter(f => !testFileRe.test(f.getFilePath()));
     const homebrew = relevantSourceFiles
@@ -176,12 +190,30 @@ function findF(fs: MemfsVolume, path: string): string[] {
     return files;
 }
 
+const resultKey = (repoId: string) => `reports/${ repoId }`;
+export async function s3ObjectExists(s3Client: InjectedS3Client, bucketName: string, repoId: string) {
+    try {
+        await s3Client.send(new HeadObjectCommand({
+            Bucket: bucketName,
+            Key: resultKey(repoId),
+        }));
+
+        return true;
+    } catch (e) {
+        if (e instanceof Error && e.name.toLowerCase().includes("notfound")) {
+            return false;
+        }
+
+        throw e;
+    }
+}
+
 export async function putS3Object(s3Client: InjectedS3Client, bucketName: string, response: AnalysisResult, repoId: string) {
     // Set the parameters.
     const bucketParams = {
         Bucket: bucketName,
         // Specify the name of the new object.
-        Key: `reports/${ repoId }`,
+        Key: resultKey(repoId),
         // Content of the new object.
         Body: JSON.stringify(response),
     };
