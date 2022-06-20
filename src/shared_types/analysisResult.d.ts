@@ -28,6 +28,7 @@ export type AnalysisTrace = {
 };
 
 export type AnalysisResult = {
+    capped: boolean,
     warnings: AnalysisWarning[],
     homebrewUsages: AnalysisUsageData[],
 };
