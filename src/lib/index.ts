@@ -1,3 +1,5 @@
+export * as tsMorph from "ts-morph"; // Re-export ts-morph, so that the consumers run exactly the same version
+
 export type {
     FilterExports,
     FilterImports,
@@ -73,3 +75,5 @@ export { setupModuleResolution } from "./resolveModule/resolveModule";
 export { setupFindUsages, getTraceNode } from "./findUsages/findUsages";
 
 export { SUPPORTED_FILE_TYPES } from "./supportedFileTypes";
+
+export { defaultIgnoreFileRe, defaultIsTargetImport } from "./cli/resolveStatsConfig";

@@ -94,7 +94,7 @@ function variableIdentifierIfExists(node: Node): Identifier | undefined {
     if (!Node.isVariableDeclaration(parent)) { return undefined; }
     const nameNode = parent.getNameNode();
 
-    if (Node.isArrayBindingPattern(nameNode)) { throw new Error("Unexpected array binding pattern as an identifier"); }
-    if (Node.isObjectBindingPattern(nameNode)) { throw new Error("Unexpected object binding pattern as an identifier"); }
+    if (Node.isArrayBindingPattern(nameNode)) { return undefined; } // TODO: warn
+    if (Node.isObjectBindingPattern(nameNode)) { return undefined; } // TODO: warn. Currently triggers because of https://github.com/storybookjs/storybook/blob/215a21288fb09c4ca3ff56ab8fe7b4265ed04b1e/lib/ui/src/components/sidebar/SearchResults.tsx#L103
     return nameNode;
 }

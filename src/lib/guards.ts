@@ -7,7 +7,7 @@ export const atLeastOne = <T>(val: ArrayLike<T>): [T, ...T[]] => {
     return val as any;
 };
 
-type StringKeys<T> = Extract<keyof T, string>;
+export type StringKeys<T> = T extends T ? Extract<keyof T, string> : never;
 export const objectKeys = <T>(val: T): StringKeys<T>[] => Object.keys(val) as any;
 export const objectValues = <T>(val: T): (T[StringKeys<T>])[] => objectKeys(val).map(k => val[k]);
 
@@ -27,6 +27,28 @@ export const isNotNull = isNot(isNull);
 
 export const isUndefined = isExactly(undefined);
 export const isNotUndefined = isNot(isUndefined);
+
+const typeOf = (val: unknown) => typeof val;
+type TypeofResults = ReturnType<typeof typeOf>;
+type TypeofMapping = { // Must be in sync with `TypeofResults`
+    string: string,
+    number: number,
+    bigint: BigInt,
+    boolean: boolean,
+    symbol: symbol,
+    undefined: undefined,
+    object: {},
+    function: (...args: any[]) => unknown,
+};
+
+export const isTypeof = <T extends TypeofResults>(expectedType: T) => (val: unknown): val is TypeofMapping[T] => typeOf(val) === expectedType;
+export const isString = isTypeof("string");
+export const isNumber = isTypeof("number");
+export const isFunction = isTypeof("function");
+
+type Ctor<T> = (...args: any[]) => T;
+export const isInstanceof = <T>(expected: Ctor<T>) => (val: unknown): val is T => val instanceof expected;
+export const isRegexp = isInstanceof(RegExp);
 
 export const isEither = <Guards extends Guard<any, unknown>[]>(...guards: Guards) => (val: GuardArrInput<Guards>): val is GuardArrOutput<Guards> => guards.some(g => g(val));
 
