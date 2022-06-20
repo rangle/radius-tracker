@@ -29,7 +29,7 @@ function App() {
             </>
             : <>
                 <h1>Radius Tracker</h1>
-                <p>Detect snowflake components, and their usages in&nbsp;the codebase.</p>
+                <p>Detect components, and their usages in&nbsp;the codebase.</p>
 
                 <form onSubmit={ onSubmit } className={ styles.form }>
                     <input type="text" value={ currentUrl } onChange={ onUrlChange } className={ styles.input }

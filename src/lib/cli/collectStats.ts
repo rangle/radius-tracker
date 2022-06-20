@@ -11,7 +11,7 @@ import { isModuleResolutionWarning, setupModuleResolution } from "../resolveModu
 import { resolveDependencies } from "../resolveDependencies/resolveDependencies";
 import { isTraceImport, setupFindUsages } from "../findUsages/findUsages";
 import { getImportFile, getImportNode, Import } from "../resolveDependencies/identifyImports";
-import { detectSnowflakes } from "../detectSnowflakes/detectSnowflakes";
+import { detectHomebrew } from "../detectHomebrew/detectHomebrew";
 import { ResolvedStatsConfig, UsageStat } from "./sharedTypes";
 import { componentUsageDistribution, usageDistributionAcrossFileTree } from "./util/stats";
 
@@ -96,11 +96,11 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     console.log(usageDistributionAcrossFileTree(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
 
     const homebrew = project.getSourceFiles()
-        .map(detectSnowflakes)
+        .map(detectHomebrew)
         .reduce((a, b) => [...a, ...b], [])
 
         // Ignore homebrew files detected in the target file (happens if the target is a directory in the project)
-        .filter(snowflake => !config.isTargetModuleOrPath.test(snowflake.declaration.getSourceFile().getFilePath().replace(projectPath, "")));
+        .filter(component => !config.isTargetModuleOrPath.test(component.declaration.getSourceFile().getFilePath().replace(projectPath, "")));
     console.log(`${ tag() } ${ homebrew.length } homebrew components`);
 
     const homebrewUsages = homebrew.map((homebrewComponent): UsageStat[] => {

@@ -29,6 +29,6 @@ export type AnalysisTrace = {
 
 export type AnalysisResult = {
     warnings: AnalysisWarning[],
-    snowflakeUsages: AnalysisUsageData[],
+    homebrewUsages: AnalysisUsageData[],
 };
 
