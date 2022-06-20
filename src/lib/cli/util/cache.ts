@@ -31,8 +31,8 @@ export const cacheFileName = (config: CacheConfig) => {
         }, {} as CacheConfig),
         (_k, v) =>
             v instanceof RegExp ? `REGEXP:${ v.toString() }`
-            : typeof v === "function" ? `FUNC:${ v.toString() }`
-            : v,
+                : typeof v === "function" ? `FUNC:${ v.toString() }`
+                    : v,
     ));
 
     return sanitize(`${ repoName(config.repoUrl) }_v${ version }_${ configHash }`);

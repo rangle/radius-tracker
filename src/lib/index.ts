@@ -1,4 +1,5 @@
 export * as tsMorph from "ts-morph"; // Re-export ts-morph, so that the consumers run exactly the same version
+export * as tsMorphCommon from "@ts-morph/common"; // Re-export @ts-morph/common, so that the consumers run exactly the same version
 
 export type {
     FilterExports,

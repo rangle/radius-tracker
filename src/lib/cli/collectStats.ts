@@ -40,8 +40,8 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
 
     const projectConfig: ProjectOptions =
         isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
-        : hasJsconfig ? { compilerOptions: { ...JSON.parse(readFile(projectPath, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
-        : { compilerOptions: { allowJs: true } };
+            : hasJsconfig ? { compilerOptions: { ...JSON.parse(readFile(projectPath, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
+                : { compilerOptions: { allowJs: true } };
 
     const project = new Project(projectConfig);
 
