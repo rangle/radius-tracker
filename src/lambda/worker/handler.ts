@@ -46,6 +46,7 @@ const yarnDirRe = /\/\.yarn\//;
 const jsRe = /\.jsx?$/;
 const MAX_USAGE_DETECTION_SECONDS = 300;
 
+const isNotNull = <T>(val: T | null): val is T => val !== null;
 
 export const createHandler = (
     s3Client: InjectedS3Client,
@@ -132,23 +133,22 @@ export const createHandler = (
     const findUsageWarnings: FindUsageWarning[] = [];
 
     console.log("Finding usages");
-    let timedout = false;
-    function* cappedDetectUsages() {
-        for (const component of homebrew) {
-            const target = component.identifier ?? component.declaration;
-            const { usages, warnings } = findUsages(target);
-            findUsageWarnings.push(...warnings);
+    let timedOut = false;
+    const homebrewUsages = homebrew.map(component => {
+        if (timedOut) { return null; }
 
-            yield { target, usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())) };
-
-            if ((Date.now() - processingStart) / 1000 > MAX_USAGE_DETECTION_SECONDS) {
-                console.log("Usage detection capped on timeout");
-                timedout = true;
-                return;
-            }
+        if (((Date.now() - processingStart) / 1000) > MAX_USAGE_DETECTION_SECONDS) {
+            console.log("Usage detection capped on timeout");
+            timedOut = true;
+            return null;
         }
-    }
-    const homebrewUsages = Array.from(cappedDetectUsages());
+
+        const target = component.identifier ?? component.declaration;
+        const { usages, warnings } = findUsages(target);
+        findUsageWarnings.push(...warnings);
+
+        return { target, usages: usages.filter(({ use }) => !testFileRe.test(use.getSourceFile().getFilePath())) };
+    }).filter(isNotNull);
 
     console.log(`Found ${ homebrewUsages.length } usages. Processing results.`);
     function nodeRef(node: tsMorph.Node): NodeRef {
@@ -164,7 +164,7 @@ export const createHandler = (
         };
     }
     const response: AnalysisResult = {
-        capped: timedout,
+        capped: timedOut,
         warnings: [...dependencies.warnings, ...findUsageWarnings].map(w => ({
             type: w.type,
             message: w.message,
