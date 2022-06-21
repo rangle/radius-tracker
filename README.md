@@ -15,8 +15,8 @@ Ask [Rangle](https://rangle.io/ds-hub/) for advice on design systems.
 Features will be built no matter what, and each use case is an opportunity to use either a design system component, or its competition.
 Measuring the performance of the design system requires tracking not only the DS components, but also any competing ones.
 
-This example tracks a proportion `@grafana/ui` takes across all component usages in Grafana & its plugin ecosystem:
-<img width="704" alt="Screenshot 2022-06-21 at 15 19 53" src="https://user-images.githubusercontent.com/6410842/174809230-f2be37c6-2ff2-4912-ba4b-a436dc961471.png">
+[This example](https://observablehq.com/@smoogly/design-system-metrics) tracks a proportion `@grafana/ui` takes across all component usages in Grafana & its plugin ecosystem:
+[<img width="704" alt="Screenshot 2022-06-21 at 15 19 53" src="https://user-images.githubusercontent.com/6410842/174809230-f2be37c6-2ff2-4912-ba4b-a436dc961471.png">](https://observablehq.com/@smoogly/design-system-metrics)
 
 
 ## Quickstart
