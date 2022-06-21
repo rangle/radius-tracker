@@ -42,6 +42,16 @@ Config is a .js file with an array of entries for each repo you want to process.
 ```
 
 
+## Install
+
+If you want to keep the tracker in your dependencies explicitly, or want to process the detected usages programmatically:
+```sh
+yarn add radius-tracker
+# or
+npm install radius-tracker
+```
+
+
 ## Report
 
 CLI output is an SQLite database with stats.  
