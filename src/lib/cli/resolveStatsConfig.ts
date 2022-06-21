@@ -35,7 +35,7 @@ const hasJsconfigPath = hasProp(jsconfigPathKey);
 
 export const defaultIgnoreFileRe = /((\.(tests?|specs?|stories|story)\.)|(\/node_modules\/)|(\/__mocks__\/)|(\.d\.ts$))/;
 export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStatsConfig => {
-    const subprojectPath = hasSubprojectPath(config) ? config.subprojectPath : "/";
+    const subprojectPath = hasSubprojectPath(config) && config.subprojectPath ? config.subprojectPath : "/";
     if (!isString(subprojectPath)) { throw new Error(`Expected a string subproject path, got: ${ subprojectPath }`); }
 
     const tsconfigPath = hasTsconfigPath(config) ? config.tsconfigPath : null;
@@ -44,17 +44,17 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
     const jsconfigPath = hasJsconfigPath(config) ? config.jsconfigPath : null;
     if (!isString(jsconfigPath) && !isNull(jsconfigPath)) { throw new Error(`Expected a string | null jsconfigPath, got: ${ jsconfigPath }`); }
 
-    const isIgnoredFile = hasIsIgnoredFile(config) ? config.isIgnoredFile ?? defaultIgnoreFileRe : defaultIgnoreFileRe;
+    const isIgnoredFile = hasIsIgnoredFile(config) && config.isIgnoredFile ? config.isIgnoredFile : defaultIgnoreFileRe;
     if (!isRegexp(isIgnoredFile)) { throw new Error(`Expected a regexp isIgnoredFile, got: ${ isIgnoredFile }`); }
 
     if (!hasIsTargetModuleOrPath(config)) { throw new Error("Expected the config to specify isTargetModuleOrPath regexp"); }
     const isTargetModuleOrPath = config.isTargetModuleOrPath;
     if (!isRegexp(isTargetModuleOrPath)) { throw new Error(`Expected a regexp isTargetModuleOrPath, got: ${ isTargetModuleOrPath }`); }
 
-    const isTargetImport = hasIsTargetImport(config) ? config.isTargetImport : defaultIsTargetImport;
+    const isTargetImport = hasIsTargetImport(config) && config.isTargetImport ? config.isTargetImport : defaultIsTargetImport;
     if (!isFunction(isTargetImport)) { throw new Error(`Expected isTargetImport to be a filter function if given, got: ${ isTargetImport }`); }
 
-    const isValidUsage = hasIsValidUsage(config) ? config.isValidUsage : () => true;
+    const isValidUsage = hasIsValidUsage(config) && config.isValidUsage ? config.isValidUsage : () => true;
     if (!isFunction(isValidUsage)) { throw new Error(`Expected isTargetImport to be a filter function if given, got: ${ isTargetImport }`); }
 
     return {
