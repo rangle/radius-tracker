@@ -29,7 +29,7 @@ function App() {
             </>
             : <>
                 <h1>Radius Tracker</h1>
-                <p>Detect components, and their usages in&nbsp;the codebase.</p>
+                <p>Try&nbsp;homebrew component detection and&nbsp;usage tracking provided by&nbsp;the&nbsp;<a href="https://github.com/rangle/radius-tracker">Radius&nbsp;Tracker</a></p>
 
                 <form onSubmit={ onSubmit } className={ styles.form }>
                     <input type="text" value={ currentUrl } onChange={ onUrlChange } className={ styles.input }
@@ -37,21 +37,22 @@ function App() {
                     <button className={ styles.button }>Analyze</button>
                 </form>
                 <div className={ styles.suggestion }>
-                    Try <span className={ styles.suggestionLink } onClick={ useSuggestion } onKeyPress={ useSuggestion } role="button" tabIndex={ 0 }>{ suggestedRepo }</span>
+                    Try&nbsp;<span className={ styles.suggestionLink } onClick={ useSuggestion } onKeyPress={ useSuggestion } role="button" tabIndex={ 0 }>{ suggestedRepo }</span>
                 </div>
 
-                <h2 className={ styles.subheader }>What is&nbsp;a&nbsp;snowflake?</h2>
-                <p>In&nbsp;<a href="https://rangle.io">Rangle,</a> we&nbsp;call unique one-off components implemented outside of&nbsp;a&nbsp;component library &ldquo;snowflakes&rdquo;.</p>
-                <p>This project detects <em>low-level components that render html tags.</em> Not all such components would be&nbsp;snowflakes in&nbsp;your project, but most snowflakes would render raw markup.</p>
-                <p>Get better results by&nbsp;using <a href="https://npmjs.com/package/radius-tracker">radius-tracker package</a> programmatically with your codebase.</p>
+                <h2 className={ styles.subheader }>What is&nbsp;a&nbsp;homebrew component?</h2>
+                <p>
+                    In&nbsp;a&nbsp;context of&nbsp;the&nbsp;design system, homebrew is&nbsp;a&nbsp;component implemented directly
+                    in&nbsp;the&nbsp;product codebase outside the&nbsp;design system. This project detects <em>low-level components that&nbsp;render html&nbsp;tags.</em>
+                </p>
+                <p>
+                    To&nbsp;measure the&nbsp;design system adoption, compare the&nbsp;design system usage to the&nbsp;competition.
+                    Not&nbsp;all&nbsp;components would be&nbsp;competing with&nbsp;the&nbsp;design system in&nbsp;your&nbsp;project.
+                    Compositional components&nbsp;— those&nbsp;only using other&nbsp;components&nbsp;— are&nbsp;not&nbsp;likely to&nbsp;compete with&nbsp;the&nbsp;design system.
+                    Low-level components dealing with&nbsp;raw&nbsp;markup, on&nbsp;the&nbsp;other hand, are&nbsp;likely to&nbsp;compete with&nbsp;the&nbsp;design system.
+                </p>
 
-                <h2 className={ styles.subheader }>Why track snowflakes?</h2>
-                <p>If&nbsp;you&rsquo;re trying to&nbsp;<a href="https://rangle.io/ds-hub/">build a&nbsp;design system,</a> there are two main reasons to&nbsp;track snowflakes:</p>
-                <ol>
-                    <li>Metrics&nbsp;&mdash; know how well component library adoption is&nbsp;going over time by&nbsp;regularly collecting the usage numbers. An&nbsp;example would be&nbsp;component library usages&nbsp;as% of&nbsp;all component usages.</li>
-                    <li>Insights&nbsp;&mdash; developers build snowflakes for a&nbsp;reason. Either design system is&nbsp;missing a&nbsp;suitable component, or&nbsp;an&nbsp;existing component is&nbsp;insufficient.
-                        Maybe developers don&rsquo;t know a&nbsp;suitable component exists. Possibly, snowflake is&nbsp;a&nbsp;historical artifact not complying with the current quality standards.</li>
-                </ol>
+                <p>Get&nbsp;better results by&nbsp;using <a href="https://github.com/rangle/radius-tracker">radius-tracker</a> with&nbsp;your&nbsp;codebase.</p>
             </> }
 
     </div>;

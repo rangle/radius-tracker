@@ -1,12 +1,13 @@
 import { NodeRef, AnalysisResult, AnalysisTrace, AnalysisUsage, AnalysisUsageData } from "../../../shared_types/analysisResult";
 import styles from "./Results.module.scss";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Collapsible } from "../collapsible/Collapsible";
 import { spell } from "../util/spelling";
 
 export const Results = ({ data }: { data: AnalysisResult }) => {
     return <div>
-        { data.capped && <div>Results were truncated, because the repo is too big</div> }
+        { data.capped && <div className={ styles.cappedNotice }>Results were truncated, because the repo is too big.
+            Use <a href="https://github.com/rangle/radius-tracker">Radius Tracker</a> CLI for full results.</div> }
 
         { Boolean(data.warnings.length) && <Warnings warnings={ data.warnings } /> }
 
