@@ -79,7 +79,9 @@ async function collectAllStats(cacheDir: string, outfile: string, configs: Reado
                 throw new Error(`Could not find a config at idx '${ idx }'`);
             }
 
-            return { projectName: repoName(config.repoUrl), stats: stat };
+            const repo = repoName(config.repoUrl);
+            const projectName = config.subprojectPath !== "/" ? `${ repo } at ${ config.subprojectPath }` : repo;
+            return { projectName, stats: stat };
         }));
         writeFileSync(outfile, Buffer.from(statsDB.export()));
         console.log(statsMessage(outfile));
