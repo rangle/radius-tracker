@@ -21,7 +21,8 @@ const gitCommand = (projectPath: string, command: string) => `git --git-dir=${ j
 export async function cloneOrUpdate(cacheDir: string, config: ResolvedWorkerConfig, cloneUrl: string, since: Date) {
     const projectPath = getProjectPath(cacheDir, config);
     if (statSync(projectPath, { throwIfNoEntry: false })) {
-        await exec(gitCommand(projectPath, "fetch"), { maxBuffer }); // Don't clone if already exists
+        await exec(gitCommand(projectPath, "repack -d"));
+        await exec(gitCommand(projectPath, `fetch --shallow-since=${ formatDate(since) }`), { maxBuffer }); // Don't clone if already exists
     } else {
         await exec(`git clone --no-tags --single-branch --no-checkout --shallow-since=${ formatDate(since) } ${ cloneUrl } ${ projectPath }`, { maxBuffer });
     }
