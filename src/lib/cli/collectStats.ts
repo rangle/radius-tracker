@@ -5,14 +5,14 @@ import { readdirSync, readFileSync, statSync } from "fs";
 import { Project, ProjectOptions } from "ts-morph";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 
-import { hasProp } from "../guards";
+import { hasProp, isRegexp, objectEntries, objectValues } from "../guards";
 import { SUPPORTED_FILE_TYPES } from "../supportedFileTypes";
 import { isModuleResolutionWarning, setupModuleResolution } from "../resolveModule/resolveModule";
 import { resolveDependencies } from "../resolveDependencies/resolveDependencies";
 import { isTraceImport, setupFindUsages } from "../findUsages/findUsages";
 import { getImportFile, getImportNode, Import } from "../resolveDependencies/identifyImports";
 import { detectHomebrew } from "../detectHomebrew/detectHomebrew";
-import { ResolvedStatsConfig, UsageStat } from "./sharedTypes";
+import { MultiTargetModuleOrPath, ResolvedStatsConfig, UsageStat } from "./sharedTypes";
 import { componentUsageDistribution, usageDistributionAcrossFileTree } from "./util/stats";
 
 const jsRe = /\.jsx?$/;
@@ -71,42 +71,64 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     };
 
     console.log(`${ tag() } Finding target imports`);
-    const targetImports = dependencies.filterImports(imp => {
-        const { containingFilePath, resolvedSource } = importSource(imp);
-        return !config.isTargetModuleOrPath.test(containingFilePath) // File where the import is detected is not among target import files,
-            && config.isTargetModuleOrPath.test(resolvedSource)      // Resolved source file is a target import,
-            && config.isTargetImport(imp);                              // And further custom checks pass OK
-    });
-    console.log(`${ tag() } ${ targetImports.length } target imports`);
+    
+    const makeFilterImportsPredicate = (isTargetModuleOrPath: RegExp) =>
+        (imp: Import) => {
+            const { containingFilePath, resolvedSource } = importSource(imp);
+            return !isTargetModuleOrPath.test(containingFilePath) // File where the import is detected is not among target import files,
+                && isTargetModuleOrPath.test(resolvedSource)      // Resolved source file is a target import,
+                && config.isTargetImport(imp);
+        };
 
-    const targetUsages = targetImports.map((imp): UsageStat[] => {
-        const name = `import ${ getImportNode(imp).print() } from ${ imp.moduleSpecifier }`;
-        return findUsages(getImportNode(imp)).usages
-            .filter(use => config.isValidUsage({ type: "target", ...use }))
-            .map(usage => ({
-                name,
-                type: "target",
-                imported_from: importSource(imp).resolvedSource,
-                target_node_file: usage.target.getSourceFile().getFilePath().replace(projectPath, ""),
-                usage_file: usage.use.getSourceFile().getFilePath().replace(projectPath, ""),
-            }));
-    }).flat();
-    console.log(`${ tag() } Targets:`);
-    console.log(componentUsageDistribution(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
-    console.log(usageDistributionAcrossFileTree(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
+    const isTargetModuleOrPathMap = isRegexp(config.isTargetModuleOrPath) ? { default: config.isTargetModuleOrPath } : config.isTargetModuleOrPath;
+
+    // extract this outside of function to reduce re-calculation for each file
+    const anyTargetModuleOrPathRexExes = objectValues(isTargetModuleOrPathMap);
+    const isAnyTargetModuleOrPath = (s: string) => {
+        return !anyTargetModuleOrPathRexExes.find(regEx => !regEx.test(s));
+    };
+
+    const targetImportsMap = objectEntries(isTargetModuleOrPathMap).reduce((acc, [key, value]) => ({
+        ...acc,
+        [key]: dependencies.filterImports(makeFilterImportsPredicate(value)),
+    }), {} as { [targetName in keyof MultiTargetModuleOrPath]: Import[] });
+    
+    
+    const allTargetUsages = objectEntries(targetImportsMap).map(([targetName, targetImports]) => {
+        console.log(`${ tag() } ${ targetImports.length } target ${ targetName } imports`);
+
+        const targetUsages = targetImports.map((imp): UsageStat[] => {
+            const name = `import ${ getImportNode(imp).print() } from ${ imp.moduleSpecifier }`;
+            return findUsages(getImportNode(imp)).usages
+                .filter(use => config.isValidUsage({ type: targetName, ...use }))
+                .map(usage => ({
+                    name,
+                    type: targetName,
+                    imported_from: importSource(imp).resolvedSource,
+                    target_node_file: usage.target.getSourceFile().getFilePath().replace(projectPath, ""),
+                    usage_file: usage.use.getSourceFile().getFilePath().replace(projectPath, ""),
+                }));
+        }).flat();
+        console.log(`${ tag() } Targets (${ targetName }):`);
+        console.log(componentUsageDistribution(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
+        console.log(usageDistributionAcrossFileTree(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
+        
+        return targetUsages;
+    });
+
 
     const homebrew = project.getSourceFiles()
         .map(detectHomebrew)
         .reduce((a, b) => [...a, ...b], [])
 
         // Ignore homebrew files detected in the target file (happens if the target is a directory in the project)
-        .filter(component => !config.isTargetModuleOrPath.test(component.declaration.getSourceFile().getFilePath().replace(projectPath, "")));
+        .filter(component => !isAnyTargetModuleOrPath(component.declaration.getSourceFile().getFilePath().replace(projectPath, "")));
     console.log(`${ tag() } ${ homebrew.length } homebrew components`);
 
     const homebrewUsages = homebrew.map((homebrewComponent): UsageStat[] => {
         const name = `component ${ homebrewComponent.identifier ? homebrewComponent.identifier.print() : homebrewComponent.declaration.print().replace(/\n/g, " ") }`;
         return findUsages(homebrewComponent.identifier ?? homebrewComponent.declaration).usages
-            .filter(({ use }) => !config.isTargetModuleOrPath.test(use.getSourceFile().getFilePath().replace(projectPath, ""))) // Ignore usages in target directory (in case target is a directory)
+            .filter(({ use }) => !isAnyTargetModuleOrPath(use.getSourceFile().getFilePath().replace(projectPath, ""))) // Ignore usages in target directory (in case target is a directory)
             .filter(use => config.isValidUsage({ type: "homebrew", ...use }))
             .map(usage => {
                 const importTrace = usage.trace.reverse().find(isTraceImport);
@@ -125,7 +147,8 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     console.log(componentUsageDistribution(homebrewUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
     console.log(usageDistributionAcrossFileTree(homebrewUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
 
-    return [...targetUsages, ...homebrewUsages];
+
+    return [...allTargetUsages.flat(), ...homebrewUsages];
 }
 
 function isFile(projectPath: string, path: string): boolean {

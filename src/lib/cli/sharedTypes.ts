@@ -2,31 +2,31 @@ import { Merge } from "ts-toolbelt/out/Union/Merge";
 import { Import } from "../resolveDependencies/identifyImports";
 import { Usage } from "../findUsages/findUsages";
 
+export type MultiTargetModuleOrPath = { [targetName: string]: RegExp };
+
 type StatsConfigBase = {
-    isIgnoredFile?: RegExp,
-    isTargetModuleOrPath: RegExp,
-    isTargetImport?: (imp: Import) => boolean,
-    isValidUsage?: (use: Usage & { type: "target" | "homebrew" }) => boolean,
-    subprojectPath?: string,
+  isIgnoredFile?: RegExp,
+  isTargetModuleOrPath: RegExp | MultiTargetModuleOrPath,
+  isTargetImport?: (imp: Import) => boolean,
+  isValidUsage?: (use: Usage & { type: string }) => boolean,
+  subprojectPath?: string,
 };
 
 type ExclusiveConfigPaths = { tsconfigPath?: null, jsconfigPath?: null }
-    | { tsconfigPath: string }
-    | { jsconfigPath: string };
+  | { tsconfigPath: string }
+  | { jsconfigPath: string };
 
 export type StatsConfig = StatsConfigBase & ExclusiveConfigPaths;
 export type ResolvedStatsConfig = Required<Merge<StatsConfig>>;
 
 
 export type UsageStat = {
-    type: "target" | "homebrew",
-    name: string,
+  type: string,
+  name: string,
 
-    imported_from: string,
-    target_node_file: string,
-    usage_file: string,
+  imported_from: string,
+  target_node_file: string,
+  usage_file: string,
 
-    // author: string, // TODO: implement
+  // author: string, // TODO: implement
 };
-
-

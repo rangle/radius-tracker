@@ -1,4 +1,4 @@
-import { hasProp, isFunction, isNull, isRegexp, isString, StringKeys } from "../guards";
+import { hasProp, isFunction, isNull, isObject, isRegexp, isString, objectValues, StringKeys } from "../guards";
 import { ResolvedStatsConfig, StatsConfig } from "./sharedTypes";
 
 const isIgnoredFileKey: StringKeys<StatsConfig> = "isIgnoredFile";
@@ -49,7 +49,9 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
 
     if (!hasIsTargetModuleOrPath(config)) { throw new Error("Expected the config to specify isTargetModuleOrPath regexp"); }
     const isTargetModuleOrPath = config.isTargetModuleOrPath;
-    if (!isRegexp(isTargetModuleOrPath)) { throw new Error(`Expected a regexp isTargetModuleOrPath, got: ${ isTargetModuleOrPath }`); }
+    if (!isRegexp(isTargetModuleOrPath) && !(isObject(isTargetModuleOrPath) && objectValues(isTargetModuleOrPath).reduce((acc, v) => acc && isRegexp(v), true))) {
+        throw new Error(`Expected a regexp or object of regexp isTargetModuleOrPath, got: ${ isTargetModuleOrPath }`);
+    }
 
     const isTargetImport = hasIsTargetImport(config) && config.isTargetImport ? config.isTargetImport : defaultIsTargetImport;
     if (!isFunction(isTargetImport)) { throw new Error(`Expected isTargetImport to be a filter function if given, got: ${ isTargetImport }`); }
