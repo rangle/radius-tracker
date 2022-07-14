@@ -80,7 +80,7 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
                 && config.isTargetImport(imp);
         };
 
-    const isTargetModuleOrPathMap = isRegexp(config.isTargetModuleOrPath) ? { default: config.isTargetModuleOrPath } : config.isTargetModuleOrPath;
+    const isTargetModuleOrPathMap = isRegexp(config.isTargetModuleOrPath) ? { target: config.isTargetModuleOrPath } : config.isTargetModuleOrPath;
 
     // extract this outside of function to reduce re-calculation for each file
     const anyTargetModuleOrPathRexExes = objectValues(isTargetModuleOrPathMap);
