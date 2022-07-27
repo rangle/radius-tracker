@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { inspect } from "util";
-import { Function, Misc } from "ts-toolbelt";
+import { Any, Function, Misc } from "ts-toolbelt";
 
 export const atLeastOne = <T>(val: ArrayLike<T>): [T, ...T[]] => {
     if (val.length < 1) { throw new Error("Expected at least one value"); }
@@ -9,7 +9,8 @@ export const atLeastOne = <T>(val: ArrayLike<T>): [T, ...T[]] => {
 
 export type StringKeys<T> = T extends T ? Extract<keyof T, string> : never;
 export const objectKeys = <T>(val: T): StringKeys<T>[] => Object.keys(val) as any;
-export const objectValues = <T>(val: T): (T[StringKeys<T>])[] => objectKeys(val).map(k => val[k]);
+export const objectValues = <T>(val: T): (T[StringKeys<T>])[] => Object.values(val);
+export const objectEntries = <T>(val: T): [StringKeys<T>, T[StringKeys<T>]][] => Object.entries(val) as any;
 
 export type Guard<In, Out extends In> = (val: In) => val is Out;
 
@@ -45,6 +46,10 @@ export const isTypeof = <T extends TypeofResults>(expectedType: T) => (val: unkn
 export const isString = isTypeof("string");
 export const isNumber = isTypeof("number");
 export const isFunction = isTypeof("function");
+export const isObject = isTypeof("object");
+
+export const isObjectOf = <K extends Any.Key, V>(isKey: Guard<unknown, K>, isValue: Guard<unknown, V>) =>
+    (val: unknown): val is { [P in K]: V } => isObject(val) && objectKeys(val).every(isKey) && objectValues(val).every(isValue);
 
 type Ctor<T> = (...args: any[]) => T;
 export const isInstanceof = <T>(expected: Ctor<T>) => (val: unknown): val is T => val instanceof expected;

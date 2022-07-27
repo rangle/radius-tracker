@@ -2,11 +2,14 @@ import { Merge } from "ts-toolbelt/out/Union/Merge";
 import { Import } from "../resolveDependencies/identifyImports";
 import { Usage } from "../findUsages/findUsages";
 
+type Target = string;
+export type MultiTargetModuleOrPath = { [targetName: Target]: RegExp };
+
 type StatsConfigBase = {
     isIgnoredFile?: RegExp,
-    isTargetModuleOrPath: RegExp,
+    isTargetModuleOrPath: RegExp | MultiTargetModuleOrPath,
     isTargetImport?: (imp: Import) => boolean,
-    isValidUsage?: (use: Usage & { type: "target" | "homebrew" }) => boolean,
+    isValidUsage?: (use: Usage & { type: "homebrew" | Target }) => boolean,
     subprojectPath?: string,
 };
 
@@ -19,7 +22,7 @@ export type ResolvedStatsConfig = Required<Merge<StatsConfig>>;
 
 
 export type UsageStat = {
-    type: "target" | "homebrew",
+    type: "homebrew" | Target,
     name: string,
 
     imported_from: string,
@@ -28,5 +31,3 @@ export type UsageStat = {
 
     // author: string, // TODO: implement
 };
-
-
