@@ -41,7 +41,7 @@ Config is a .js file with an array of entries for each repo you want to process.
 }
 ```
 
-`isTargetModuleOrPath` can also be an object of regular expressions, if you want to track adoption of multiple targets:
+`isTargetModuleOrPath` can also be an set of regular expressions, if you want to track adoption of multiple targets:
 ```ts
 {
   repoUrl: "https://github.com/company/product",

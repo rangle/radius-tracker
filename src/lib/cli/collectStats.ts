@@ -12,7 +12,7 @@ import { resolveDependencies } from "../resolveDependencies/resolveDependencies"
 import { isTraceImport, setupFindUsages } from "../findUsages/findUsages";
 import { getImportFile, getImportNode, Import } from "../resolveDependencies/identifyImports";
 import { detectHomebrew } from "../detectHomebrew/detectHomebrew";
-import { MultiTargetModuleOrPath, ResolvedStatsConfig, UsageStat } from "./sharedTypes";
+import { ResolvedStatsConfig, UsageStat } from "./sharedTypes";
 import { componentUsageDistribution, usageDistributionAcrossFileTree } from "./util/stats";
 
 const jsRe = /\.jsx?$/;
@@ -71,30 +71,19 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     };
 
     console.log(`${ tag() } Finding target imports`);
-    
-    const makeFilterImportsPredicate = (isTargetModuleOrPath: RegExp) =>
-        (imp: Import) => {
-            const { containingFilePath, resolvedSource } = importSource(imp);
-            return !isTargetModuleOrPath.test(containingFilePath) // File where the import is detected is not among target import files,
-                && isTargetModuleOrPath.test(resolvedSource)      // Resolved source file is a target import,
-                && config.isTargetImport(imp);
-        };
 
     const isTargetModuleOrPathMap = isRegexp(config.isTargetModuleOrPath) ? { target: config.isTargetModuleOrPath } : config.isTargetModuleOrPath;
 
-    // extract this outside of function to reduce re-calculation for each file
-    const anyTargetModuleOrPathRexExes = objectValues(isTargetModuleOrPathMap);
-    const isAnyTargetModuleOrPath = (s: string) => {
-        return !anyTargetModuleOrPathRexExes.find(regEx => !regEx.test(s));
-    };
+    const allTargetRe = objectValues(isTargetModuleOrPathMap);
+    const isAnyTargetModuleOrPath = (s: string) => allTargetRe.some(regEx => regEx.test(s));
 
-    const targetImportsMap = objectEntries(isTargetModuleOrPathMap).reduce((acc, [key, value]) => ({
-        ...acc,
-        [key]: dependencies.filterImports(makeFilterImportsPredicate(value)),
-    }), {} as { [targetName in keyof MultiTargetModuleOrPath]: Import[] });
-    
-    
-    const allTargetUsages = objectEntries(targetImportsMap).map(([targetName, targetImports]) => {
+    const allTargetUsages = objectEntries(isTargetModuleOrPathMap).map(([targetName, isTargetModuleOrPath]) => {
+        const targetImports = dependencies.filterImports(imp => {
+            const { containingFilePath, resolvedSource } = importSource(imp);
+            return !isTargetModuleOrPath.test(containingFilePath) // File where the import is detected is not among target import files,
+                && isTargetModuleOrPath.test(resolvedSource)      // Resolved source file is a target import,
+                && config.isTargetImport(imp);                    // And further custom checks pass OK
+        });
         console.log(`${ tag() } ${ targetImports.length } target ${ targetName } imports`);
 
         const targetUsages = targetImports.map((imp): UsageStat[] => {
@@ -112,7 +101,7 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
         console.log(`${ tag() } Targets (${ targetName }):`);
         console.log(componentUsageDistribution(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
         console.log(usageDistributionAcrossFileTree(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
-        
+
         return targetUsages;
     });
 

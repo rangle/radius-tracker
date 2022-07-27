@@ -1,4 +1,14 @@
-import { hasProp, isFunction, isNull, isObject, isRegexp, isString, objectValues, StringKeys } from "../guards";
+import {
+    hasProp,
+    isFunction,
+    isNull,
+    isObjectOf,
+    isRegexp,
+    isString,
+    objectKeys,
+    objectValues,
+    StringKeys,
+} from "../guards";
 import { ResolvedStatsConfig, StatsConfig } from "./sharedTypes";
 
 const isIgnoredFileKey: StringKeys<StatsConfig> = "isIgnoredFile";
@@ -33,6 +43,8 @@ const hasTsconfigPath = hasProp(tsconfigPathKey);
 const jsconfigPathKey: StringKeys<StatsConfig> = "jsconfigPath";
 const hasJsconfigPath = hasProp(jsconfigPathKey);
 
+const isMultiTargetModuleOrPathDefinition = isObjectOf(isString, isRegexp);
+
 export const defaultIgnoreFileRe = /((\.(tests?|specs?|stories|story)\.)|(\/(tests?|specs?|stories|story)\/)|(\/node_modules\/)|(\/__mocks__\/)|(\.d\.ts$))/;
 export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStatsConfig => {
     const subprojectPath = hasSubprojectPath(config) && config.subprojectPath ? config.subprojectPath : "/";
@@ -47,10 +59,18 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
     const isIgnoredFile = hasIsIgnoredFile(config) && config.isIgnoredFile ? config.isIgnoredFile : defaultIgnoreFileRe;
     if (!isRegexp(isIgnoredFile)) { throw new Error(`Expected a regexp isIgnoredFile, got: ${ isIgnoredFile }`); }
 
-    if (!hasIsTargetModuleOrPath(config)) { throw new Error("Expected the config to specify isTargetModuleOrPath regexp"); }
+    if (!hasIsTargetModuleOrPath(config)) { throw new Error("Expected the config to specify isTargetModuleOrPath regexp or set"); }
     const isTargetModuleOrPath = config.isTargetModuleOrPath;
-    if (!isRegexp(isTargetModuleOrPath) && !(isObject(isTargetModuleOrPath) && objectValues(isTargetModuleOrPath).reduce((acc, v) => acc && isRegexp(v), true))) {
-        throw new Error(`Expected a regexp or object of regexp isTargetModuleOrPath, got: ${ isTargetModuleOrPath }`);
+    if (!isRegexp(isTargetModuleOrPath) && !isMultiTargetModuleOrPathDefinition(isTargetModuleOrPath)) {
+        throw new Error(`Expected a regexp or a set of regexp isTargetModuleOrPath, got: ${ isTargetModuleOrPath }`);
+    }
+    if (isMultiTargetModuleOrPathDefinition(isTargetModuleOrPath)) {
+        if (objectValues(isTargetModuleOrPath).length === 0) {
+            throw new Error("Expected a set of regexp in isTargetModuleOrPath to have at least one entry");
+        }
+        if (objectKeys(isTargetModuleOrPath).some(k => k === "homebrew")) {
+            throw new Error("isTargetModuleOrPath set contains a 'homebrew' key. Homebrew is a reserved target.");
+        }
     }
 
     const isTargetImport = hasIsTargetImport(config) && config.isTargetImport ? config.isTargetImport : defaultIsTargetImport;

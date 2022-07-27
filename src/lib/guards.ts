@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { inspect } from "util";
-import { Function, Misc } from "ts-toolbelt";
+import { Any, Function, Misc } from "ts-toolbelt";
 
 export const atLeastOne = <T>(val: ArrayLike<T>): [T, ...T[]] => {
     if (val.length < 1) { throw new Error("Expected at least one value"); }
@@ -47,6 +47,9 @@ export const isString = isTypeof("string");
 export const isNumber = isTypeof("number");
 export const isFunction = isTypeof("function");
 export const isObject = isTypeof("object");
+
+export const isObjectOf = <K extends Any.Key, V>(isKey: Guard<unknown, K>, isValue: Guard<unknown, V>) =>
+    (val: unknown): val is { [P in K]: V } => isObject(val) && objectKeys(val).every(isKey) && objectValues(val).every(isValue);
 
 type Ctor<T> = (...args: any[]) => T;
 export const isInstanceof = <T>(expected: Ctor<T>) => (val: unknown): val is T => val instanceof expected;
