@@ -64,7 +64,7 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
     if (!isRegexp(isTargetModuleOrPath) && !isMultiTargetModuleOrPathDefinition(isTargetModuleOrPath)) {
         throw new Error(`Expected a regexp or a set of regexp isTargetModuleOrPath, got: ${ isTargetModuleOrPath }`);
     }
-    if (isMultiTargetModuleOrPathDefinition(isTargetModuleOrPath)) {
+    if (!isRegexp(isTargetModuleOrPath)) {
         if (objectValues(isTargetModuleOrPath).length === 0) {
             throw new Error("Expected a set of regexp in isTargetModuleOrPath to have at least one entry");
         }
