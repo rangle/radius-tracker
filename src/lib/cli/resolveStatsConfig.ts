@@ -33,7 +33,7 @@ const hasTsconfigPath = hasProp(tsconfigPathKey);
 const jsconfigPathKey: StringKeys<StatsConfig> = "jsconfigPath";
 const hasJsconfigPath = hasProp(jsconfigPathKey);
 
-export const defaultIgnoreFileRe = /((\.(tests?|specs?|stories|story)\.)|(\/node_modules\/)|(\/__mocks__\/)|(\.d\.ts$))/;
+export const defaultIgnoreFileRe = /((\.(tests?|specs?|stories|story)\.)|(\/(tests?|specs?|stories|story)\/)|(\/node_modules\/)|(\/__mocks__\/)|(\.d\.ts$))/;
 export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStatsConfig => {
     const subprojectPath = hasSubprojectPath(config) && config.subprojectPath ? config.subprojectPath : "/";
     if (!isString(subprojectPath)) { throw new Error(`Expected a string subproject path, got: ${ subprojectPath }`); }
