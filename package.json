@@ -15,7 +15,7 @@
   },
   "scripts": {
     "postinstall": "patch-package",
-    "test": "yarn task test",
+    "test": "yarn task test && yarn demo-build",
     "build": "yarn task build",
     "task": "yarn prep && node -r ts-node/register/transpile-only ./src/tasks/tasks.ts",
     "cli": "yarn prep && node -r ts-node/register/transpile-only ./src/lib/cli/index.ts",
