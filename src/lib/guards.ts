@@ -8,9 +8,9 @@ export const atLeastOne = <T>(val: ArrayLike<T>): [T, ...T[]] => {
 };
 
 export type StringKeys<T> = T extends T ? Extract<keyof T, string> : never;
-export const objectKeys = <T>(val: T): StringKeys<T>[] => Object.keys(val) as any;
-export const objectValues = <T>(val: T): (T[StringKeys<T>])[] => Object.values(val);
-export const objectEntries = <T>(val: T): [StringKeys<T>, T[StringKeys<T>]][] => Object.entries(val) as any;
+export const objectKeys = <T extends {}>(val: T): StringKeys<T>[] => Object.keys(val) as any;
+export const objectValues = <T extends {}>(val: T): (T[StringKeys<T>])[] => Object.values(val);
+export const objectEntries = <T extends {}>(val: T): [StringKeys<T>, T[StringKeys<T>]][] => Object.entries(val) as any;
 
 export type Guard<In, Out extends In> = (val: In) => val is Out;
 
@@ -57,7 +57,10 @@ export const isRegexp = isInstanceof(RegExp);
 
 export const isEither = <Guards extends Guard<any, unknown>[]>(...guards: Guards) => (val: GuardArrInput<Guards>): val is GuardArrOutput<Guards> => guards.some(g => g(val));
 
-export const hasProp = <P extends string>(prop: P) => <T>(val: T): val is T & { [p in P]: unknown } => Boolean(val) && typeof val === "object" && prop in val;
+export const hasProp = <P extends string>(prop: P) => <T>(val: T): val is T & { [p in P]: unknown } => {
+    if (!val) { return false; }
+    return Boolean(val) && typeof val === "object" && prop in val;
+};
 
 const hasThen = hasProp("then");
 export const isPromiseLike = (val: unknown): val is PromiseLike<unknown> => hasThen(val) && typeof val.then === "function";
