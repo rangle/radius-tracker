@@ -17,35 +17,17 @@ jobs:
       - name: Install Yarn 🚧
         if: ${{ env.ACT }}
         run: npm install -g yarn
-      - name: Build Lambda 🛠
-        run: yarn build-lambda
-      - name: Terraform Install 💾
-        if: ${{ env.ACT }}
-        run: |
-          curl -fs https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-          sudo apt-get update && sudo apt-get install -y terraform
-      - name: Terraform Init 🏗
-        run: terraform -chdir=${{ github.workspace }}/terraform init
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - name: Terraform Apply ✅
-        run: terraform -chdir=${{ github.workspace }}/terraform apply -auto-approve
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - name: Build Demo 🛠
-        run: REACT_APP_API_URL=$(terraform -chdir=${{ github.workspace }}/terraform output -json listener_outputs | jq -r '.api_invoke_url') yarn demo-build
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Install Rsync 📚
         if: ${{ env.ACT }}
         run: apt-get update && apt-get install -y rsync
+      - name: Build Docs Site 📖
+        run: |
+          yarn --cwd ./src/docs
+          yarn --cwd ./src/docs build
+          touch ./src/docs/out/.nojekyll
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4.2.5
         with:
           branch: gh-pages
-          folder: src/demo/build
+          folder: src/docs/out
           token: ${{secrets.GITHUB_TOKEN}}
