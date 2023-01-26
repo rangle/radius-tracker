@@ -27,7 +27,5 @@ jobs:
       - name: Install Yarn 🚧
         if: ${{ env.ACT }}
         run: npm install -g yarn
-      - name: Build Lambda 🦺
-        run: yarn build-lambda
       - name: Run Tests and Build 🦺
         run: yarn build
