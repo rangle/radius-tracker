@@ -18,8 +18,6 @@ jobs:
       - name: Install Yarn 🚧
         if: ${{ env.ACT }}
         run: npm install -g yarn
-      - name: Build Lambda 🛠
-        run: yarn build-lambda
       - name: Build Package 🛠
         run: yarn build
       - name: Release 🚀
