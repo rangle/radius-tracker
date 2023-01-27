@@ -1,4 +1,4 @@
-# This workflow will build demo project and deploy it to https://rangle.github.io/radius-tracker/
+# This workflow will build docs and deploy it to https://rangle.github.io/radius-tracker/
 # For more information see: https://github.com/marketplace/actions/deploy-to-github-pages
 
 name: Build and Deploy
@@ -21,10 +21,7 @@ jobs:
         if: ${{ env.ACT }}
         run: apt-get update && apt-get install -y rsync
       - name: Build Docs Site 📖
-        run: |
-          yarn --cwd ./src/docs
-          yarn --cwd ./src/docs build
-          touch ./src/docs/out/.nojekyll
+        run: yarn docs-build
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4.2.5
         with:

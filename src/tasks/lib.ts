@@ -8,7 +8,7 @@ export const jest = (opt: JestOptions) => cmd("jest ./src", opt.foreground ? () 
 
 export const typecheck = cmd("tsc -p tsconfig.json --noEmit");
 
-export const test = work(jest, typecheck, lint);
+export const test = work(jest, typecheck, lint, cmd("yarn docs-build"));
 
 type BuildOptions = { test?: boolean };
 export const buildTasks = (opt: BuildOptions) => {
