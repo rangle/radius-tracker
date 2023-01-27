@@ -21,7 +21,7 @@
     "lint": "yarn task lint",
     "prep": "yarn install --no-audit --frozen-lockfile && node -r ts-node/register/transpile-only src/lib/checkEngine.ts --check-yarn",
     "docs-build": "yarn --cwd ./src/docs && yarn --cwd ./src/docs build && touch ./src/docs/out/.nojekyll",
-    "docs-serve": "yarn docs-build && npx serve ./src/docs/out"
+    "docs-dev": "yarn --cwd ./src/docs && yarn --cwd ./src/docs dev"
   },
   "keywords": [],
   "author": {
