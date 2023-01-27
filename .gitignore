@@ -6,8 +6,6 @@
 
 # Documentation stie related artifacts
 /src/docs/node_modules
-/src/docs/package-lock.json
-/src/docs/yarn.lock
 /src/docs/.next
 /src/docs/out
 
