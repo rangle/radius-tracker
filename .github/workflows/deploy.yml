@@ -20,7 +20,14 @@ jobs:
       - name: Install Rsync 📚
         if: ${{ env.ACT }}
         run: apt-get update && apt-get install -y rsync
+      - name: Cache build artifacts 💾
+        uses: actions/cache@v3
+        id: cache
+        with:
+          key: ${{ runner.os }}-${{ hashFiles('src/docs/pages', 'src/docs/next.config.js', 'src/docs/theme.config.jsx') }}
+          path: src/docs/out
       - name: Build Docs Site 📖
+        if: steps.cache.outputs.cache-hit != 'true'
         run: yarn docs-build
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4.2.5
