@@ -7,10 +7,13 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      PR_NUM: ${{ github.event.pull_request.number }}
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v2
@@ -20,7 +23,20 @@ jobs:
       - name: Install Rsync 📚
         if: ${{ env.ACT }}
         run: apt-get update && apt-get install -y rsync
+      - name: Comment on PR 💬
+        if: github.refs != 'refs/heads/main'
+        uses: hasura/comment-progress@v2.2.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          number: ${{ github.event.number }}
+          id: deploy-preview
+          message: "Initializing deploy of documentation site preview... ⏳"
+      - name: Set BASE_URL for Preview Build 🔨
+        if: github.refs != 'refs/heads/main'
+        run: echo BASE_URL="https://rangle.github.io/radius-tracker/pull/${{ env.PR_NUM }}" >> $GITHUB_ENV
       - name: Cache build artifacts 💾
+        if: github.refs == 'refs/heads/main'
         uses: actions/cache@v3
         id: cache
         with:
@@ -29,9 +45,29 @@ jobs:
       - name: Build Docs Site 📖
         if: steps.cache.outputs.cache-hit != 'true'
         run: yarn docs-build
-      - name: Deploy 🚀
+      - name: Deploy (main branch) 🚀
+        if: github.refs == 'refs/heads/main'
+        uses: JamesIves/github-pages-deploy-action@v4.2.5
+        with:
+          clean-exclude: pull
+          branch: gh-pages
+          folder: src/docs/out
+          token: ${{secrets.GITHUB_TOKEN}}
+      - name: Deploy (PR Preview) 🔎
+        if: github.refs != 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4.2.5
         with:
           branch: gh-pages
           folder: src/docs/out
-          token: ${{secrets.GITHUB_TOKEN}}
+          target-folder: pull/${{ env.PR_NUM }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          clean: false
+      - name: Update PR comment 💬
+        if: github.refs != 'refs/heads/main'
+        uses: hasura/comment-progress@v2.2.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          number: ${{ github.event.number }}
+          id: deploy-preview
+          message: "🚀 Deploy of docs site preview has been started.  It will take a minute or two for changes to appear on the site.  See changes here: ${{ env.BASE_URL }}"

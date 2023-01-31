@@ -1,0 +1,31 @@
+# Removes specific build underneath the pull/ directory in gh-pages branch when the relevant PR closes.
+name: Clean-up PR Preview
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  clean-pr-preview:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUM: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Checkout 🚧
+        uses: actions/checkout@v2
+      - name: Create Empty Directory 🗑️
+        run: mkdir ${{ env.PR_NUM }}
+      - name: Delete Directory 🪓
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ env.PR_NUM }}
+          destination_dir: pull/${{ env.PR_NUM }}
+      - name: Update comment on PR 💬
+        uses: hasura/comment-progress@v2.2.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          number: ${{ github.event.number }}
+          id: deploy-preview
+          message: "🫰🏼 PR preview build has been deleted"
