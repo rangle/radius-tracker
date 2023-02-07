@@ -1,6 +1,7 @@
 const nextra = require("nextra");
 
 const isGithubActions = process.env.GITHUB_ACTIONS || false;
+const pullRequestNumber = process.env.PR_NUM || false;
 
 let assetPrefix = "/";
 let basePath = "";
@@ -11,6 +12,11 @@ if (isGithubActions) {
 
     assetPrefix = `/${ repo }/`;
     basePath = `/${ repo }`;
+
+    if (pullRequestNumber) {
+        assetPrefix += `pull/${pullRequestNumber}/`
+        basePath += `/pull/${pullRequestNumber}`
+    }
 }
 
 const withNextra = nextra({
