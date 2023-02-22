@@ -86,7 +86,9 @@ describe("Identify imports", () => {
         expect(warnings).toHaveLength(1);
 
         const [warning] = atLeastOne(warnings);
-        expect(warning).toHaveProperty("type", "import-unresolved-module-specifier");
+        if (warning.type !== "import-unresolved-module-specifier") {
+            throw new Error(`Expected an import-unresolved-module-specifier warning, got ${ warning.type } instead`);
+        }
         expect(Node.isIdentifier(warning.moduleSpecifier)).toBe(true);
         expect(warning.moduleSpecifier.getText()).toBe("mod");
     });
@@ -106,7 +108,7 @@ describe("Identify imports", () => {
         expect(imp.importCall.getText()).toBe("import(\"module\")");
     });
 
-    it("should throw if dynamic import is used without string module identifier", async () => {
+    it("should warn if dynamic import is used without string module identifier", async () => {
         const { warnings } = identifyImports(project.createSourceFile("tst.js", `
             async function tst() {
                 const mod = "module"; 
@@ -117,9 +119,25 @@ describe("Identify imports", () => {
         expect(warnings).toHaveLength(1);
 
         const [warning] = atLeastOne(warnings);
-        expect(warning).toHaveProperty("type", "import-unresolved-module-specifier");
+        if (warning.type !== "import-unresolved-module-specifier") {
+            throw new Error(`Expected an import-unresolved-module-specifier warning, got ${ warning.type } instead`);
+        }
         expect(Node.isIdentifier(warning.moduleSpecifier)).toBe(true);
         expect(warning.moduleSpecifier.getText()).toBe("mod");
+    });
+
+    it("should warn if import equals is used without referencing an external module", async () => {
+        const { warnings } = identifyImports(project.createSourceFile("tst.js", `
+            import IRichLanguageConfiguration = monaco.languages.LanguageConfiguration
+        `));
+
+        expect(warnings).toHaveLength(1);
+
+        const [warning] = atLeastOne(warnings);
+        if (warning.type !== "import-unresolved-import-equals-definition") {
+            throw new Error(`Expected an import-unresolved-module-specifier warning, got ${ warning.type } instead`);
+        }
+        expect(warning.imported.getText()).toBe("monaco.languages.LanguageConfiguration");
     });
 
     it("should detect cjs require imports", async () => {
@@ -144,7 +162,9 @@ describe("Identify imports", () => {
         expect(warnings).toHaveLength(1);
 
         const [warning] = atLeastOne(warnings);
-        expect(warning).toHaveProperty("type", "import-unresolved-module-specifier");
+        if (warning.type !== "import-unresolved-module-specifier") {
+            throw new Error(`Expected an import-unresolved-module-specifier warning, got ${ warning.type } instead`);
+        }
         expect(Node.isIdentifier(warning.moduleSpecifier)).toBe(true);
         expect(warning.moduleSpecifier.getText()).toBe("mod");
     });

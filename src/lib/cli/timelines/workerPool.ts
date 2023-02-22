@@ -22,10 +22,13 @@ export const setupWorkerPool = () => {
     const workerFileBase = join(__dirname, "statsWorker");
     const workerFile = workerFileBase + (statSync(workerFileBase + ".ts", { throwIfNoEntry: false })?.isFile() ? ".ts" : ".js");
 
-    return new StaticPool({
+    return {
+        pool: new StaticPool({
+            size: numWorkers,
+            task: workerFile,
+            resourceLimits: { maxOldGenerationSizeMb: desiredMemory / 1024 },
+        }),
         size: numWorkers,
-        task: workerFile,
-        resourceLimits: { maxOldGenerationSizeMb: desiredMemory / 1024 },
-    });
+    };
 };
 

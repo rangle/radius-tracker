@@ -1,14 +1,46 @@
+// noinspection SqlResolve
+
 import initSqlight, { BindParams, Database } from "sql.js";
 import { CommitData, Stats } from "./timelines/workerTypes";
-import { atLeastOne, objectKeys } from "../guards";
-import { UsageStat } from "./sharedTypes";
+import { atLeastOne, isRegexp, objectKeys } from "../guards";
+import { ResolvedStatsConfig, UsageStat } from "./sharedTypes";
+import { version } from "../packageInfo";
 import { relative } from "path";
 
-export const processStats = async (allStats: { projectName: string, stats: Stats }[]): Promise<Database> => {
+export const processStats = async ( // TODO: include warnings in the output
+    allStats: { projectName: string, config: ResolvedStatsConfig, stats: Stats }[],
+): Promise<Database> => {
     const SQL = await initSqlight();
     const db = new SQL.Database();
 
-    // noinspection SqlNoDataSourceInspection
+    db.run(`
+        CREATE TABLE meta (
+            id INTEGER PRIMARY KEY, 
+            key TEXT UNIQUE,
+            value TEXT
+        );
+    `);
+    const meta: { [key: string]: string } = {
+        version,
+        schemaVersion: "2",
+        collectedAt: new Date().toISOString(),
+    };
+    objectKeys(meta).forEach(key => {
+        const val = meta[key];
+        if (!val) { throw new Error(`String meta value expected for key '${ key }'`); }
+        db.run("INSERT INTO meta(key, value) VALUES ($1, $2)", [key, val]);
+    });
+
+    // Project config specifiers targets, sometimes multiple targets per project with their own regexps.
+    // Targets with matching keys are considered the same target, even if they have different regexps.
+    // This is meaningful because same thing may sometimes be imported in different ways.
+    // TODO: capture what exactly was the regexp for a given source per project.
+    db.run(`
+        CREATE TABLE sources (
+            id INTEGER PRIMARY KEY, 
+            source TEXT UNIQUE
+        );
+    `);
     db.run(`
         CREATE TABLE projects (
             id INTEGER PRIMARY KEY, 
@@ -29,19 +61,22 @@ export const processStats = async (allStats: { projectName: string, stats: Stats
     db.run(`
         CREATE TABLE components (
             id INTEGER PRIMARY KEY,
-            project INTEGER,
+            source INTEGER,
+            homebrew_project INTEGER,
             component TEXT,
-            FOREIGN KEY (project) REFERENCES projects(id)
+            FOREIGN KEY (source) REFERENCES sources(id),
+            FOREIGN KEY (homebrew_project) REFERENCES projects(id)
         );
     `);
     db.run(`
-        CREATE UNIQUE INDEX components_uniq_per_project ON components(project, component);
+        CREATE UNIQUE INDEX components_uniq_per_homebrew_project ON components(homebrew_project, component);
     `);
     db.run(`
         CREATE TABLE commits (
             id INTEGER PRIMARY KEY,
             project INTEGER,
             oid TEXT,
+            committedAt TEXT, 
             FOREIGN KEY (project) REFERENCES projects(id)
         );
     `);
@@ -51,14 +86,15 @@ export const processStats = async (allStats: { projectName: string, stats: Stats
     db.run(`
         CREATE TABLE usages (
             id INTEGER PRIMARY KEY,
+            source INTEGER,
             project INTEGER,
             oid INTEGER,
             weeksAgo INTEGER,
-            type TEXT,
             importedFrom INTEGER,
             targetNodeFile INTEGER,
             usageFile INTEGER,
             component INTEGER,
+            FOREIGN KEY (source) REFERENCES sources(id),
             FOREIGN KEY (project) REFERENCES projects(id),
             FOREIGN KEY (oid) REFERENCES commits(id),
             FOREIGN KEY (importedFrom) REFERENCES files(id),
@@ -79,13 +115,37 @@ export const processStats = async (allStats: { projectName: string, stats: Stats
         return value;
     };
 
+    const homebrewId = execReturning("INSERT INTO sources(source) VALUES ($1) RETURNING id", ["homebrew"]);
+    if (typeof homebrewId !== "number") { throw new Error("Expected homebrew source id to be a number"); }
+
+    const sourceIdMap = [...new Set(
+        allStats
+            .map(x => x.config.isTargetModuleOrPath)
+            .flatMap(target => isRegexp(target) ? "target" : objectKeys(target)),
+    )]
+        .map(source => {
+            const id = execReturning("INSERT INTO sources(source) VALUES ($1) RETURNING id", [source]);
+            if (typeof id !== "number") { throw new Error("Expected source id to be a number"); }
+            return { source, id };
+        })
+        .reduce((map, { source, id }) => {
+            map.set(source, id);
+            return map;
+        }, new Map<string, number>([["homebrew", homebrewId]]));
+
+    const getSourceId = (source: string) => {
+        const id = sourceIdMap.get(source);
+        if (!id) { throw new Error(`Can not find source ${ source }`); }
+        return id;
+    };
+
     const commitCache: { [key: string]: number } = {};
-    const upsertCommit = (project: number, commit: string) => {
+    const upsertCommit = (project: number, commit: string, commitTime: Date) => {
         const cacheKey = `${ project }:::${ commit }`;
         const cached = commitCache[cacheKey];
         if (cached) { return cached; }
 
-        const commitId = execReturning("INSERT INTO commits(project, oid) VALUES ($0, $1) ON CONFLICT DO UPDATE SET oid = oid RETURNING id", [project, commit]);
+        const commitId = execReturning("INSERT INTO commits(project, oid, committedAt) VALUES ($0, $1, $2) ON CONFLICT DO UPDATE SET oid = oid RETURNING id", [project, commit, commitTime.toISOString()]);
         if (typeof commitId !== "number") { throw new Error("Expected a numeric commit id"); }
 
         commitCache[cacheKey] = commitId;
@@ -106,31 +166,42 @@ export const processStats = async (allStats: { projectName: string, stats: Stats
     };
 
     const componentCache: { [key: string]: number } = {};
-    const upsertComponent = (project: number, component: string) => {
-        const cacheKey = `${ project }:::${ component }`;
+    const upsertComponent = (source: number, homebrewProject: number | null, component: string) => {
+        const cacheKey = `${ source }:::${ homebrewProject }:::${ component }`;
         const cached = componentCache[cacheKey];
         if (cached) { return cached; }
 
-        const componentId = execReturning("INSERT INTO components(project, component) VALUES ($0, $1) ON CONFLICT DO UPDATE SET component = component RETURNING id", [project, component]);
+        const componentId = execReturning(`
+            INSERT INTO components(source, homebrew_project, component)
+            VALUES ($0, $1, $2)
+            ON CONFLICT DO UPDATE SET component = component RETURNING id
+        `, [source, homebrewProject, component]);
         if (typeof componentId !== "number") { throw new Error("Expected a numeric component id"); }
 
         componentCache[cacheKey] = componentId;
         return componentId;
     };
 
-    const usageColumns = (project: number, commit: Pick<CommitData, "oid" | "weeksAgo">, usage: UsageStat) => ({
-        project,
-        oid: upsertCommit(project, commit.oid),
-        weeksAgo: commit.weeksAgo,
+    const usageColumns = (
+        project: number,
+        commit: Pick<CommitData, "oid" | "weeksAgo" | "ts">,
+        usage: UsageStat,
+    ) => {
+        const sourceId = getSourceId(usage.source);
+        return {
+            project,
+            oid: upsertCommit(project, commit.oid, commit.ts),
+            weeksAgo: commit.weeksAgo,
 
-        type: usage.type,
-        importedFrom: upsertFile(project, usage.imported_from),
-        targetNodeFile: upsertFile(project, usage.target_node_file),
-        usageFile: upsertFile(project, usage.usage_file),
-        component: upsertComponent(project, usage.name),
-    });
+            source: sourceId,
+            importedFrom: upsertFile(project, usage.imported_from),
+            targetNodeFile: upsertFile(project, usage.target_node_file),
+            usageFile: upsertFile(project, usage.usage_file),
+            component: upsertComponent(sourceId, usage.source === "homebrew" ? project : null, usage.component_name),
+        };
+    };
 
-    const write = (project: number, commit: Pick<CommitData, "oid" | "weeksAgo">, usagesArr: UsageStat[]) => {
+    const write = (project: number, commit: Pick<CommitData, "oid" | "weeksAgo" | "ts">, usagesArr: UsageStat[]) => {
         if (usagesArr.length === 0) { return; }
 
         const usages = atLeastOne(usagesArr);

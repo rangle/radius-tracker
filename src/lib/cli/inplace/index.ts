@@ -47,14 +47,15 @@ export default defineYargsModule(
             isIgnoredFile: args.ignoredFileRe ? new RegExp(args.ignoredFileRe) : undefined,
         };
 
-        const stats = await processStats([{ projectName: args.path ?? "Current directory", stats: [{
+        const config = resolveStatsConfig(unresolvedConfig);
+        const stats = await processStats([{ projectName: args.path ?? "Current directory", config, stats: [{
             commit: {
                 oid: "latest",
                 weeksAgo: 0,
                 ts: new Date(),
                 expectedDate: new Date(),
             },
-            stats: await collectStats(resolveStatsConfig(unresolvedConfig), tag, resolve(args.path ?? process.cwd())),
+            stats: await collectStats(config, tag, resolve(args.path ?? process.cwd())),
         }] }]);
 
         const outfile = resolve(args.outfile || join(process.cwd(), "usages.sqlite"));

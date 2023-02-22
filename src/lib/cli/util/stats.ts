@@ -32,8 +32,8 @@ export function usageDistributionAcrossFileTree(usages: UsageStat[]): string {
 
 export function componentUsageDistribution(usages: UsageStat[]) {
     const usageCounts = usages.reduce((agg, u) => {
-        const usage = agg[u.name] ?? 0;
-        agg[u.name] = usage + 1;
+        const usage = agg[u.component_name] ?? 0;
+        agg[u.component_name] = usage + 1;
         return agg;
     }, {} as { [name: string]: number });
 

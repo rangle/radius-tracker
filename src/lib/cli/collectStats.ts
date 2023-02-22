@@ -2,10 +2,10 @@ import { join } from "path";
 import { Buffer } from "buffer";
 import { readdirSync, readFileSync, statSync } from "fs";
 
-import { Project, ProjectOptions } from "ts-morph";
+import { Node, Project, ProjectOptions } from "ts-morph";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 
-import { hasProp, isRegexp, objectEntries, objectValues } from "../guards";
+import { hasProp, isNotUndefined, isRegexp, objectEntries, objectValues } from "../guards";
 import { SUPPORTED_FILE_TYPES } from "../supportedFileTypes";
 import { isModuleResolutionWarning, setupModuleResolution } from "../resolveModule/resolveModule";
 import { resolveDependencies } from "../resolveDependencies/resolveDependencies";
@@ -26,11 +26,24 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
 
     console.log(`${ tag() } Setting up ts-morph project`);
     const getTsconfigCompilerOptions = () => {
-        // TSConfig is a .json file, but it's not a JSON — e.g. it allows comments and `extends` references.
-        const tsconfigResolutionFs = new TransactionalFileSystem(new Project({}).getFileSystem());
-        return new TsConfigResolver(tsconfigResolutionFs, tsconfigResolutionFs.getStandardizedAbsolutePath(join(projectPath, tsconfigPath)), "utf8")
-            .getCompilerOptions();
+        // TSConfig is a .json file, but it's not a JSON — e.g. it allows comments and composes `extends` references.
+        const tsconfigResolutionFs = new TransactionalFileSystem({
+            fileSystem: new Project({}).getFileSystem(),
+            skipLoadingLibFiles: true,
+            libFolderPath: undefined,
+        });
+
+        return new TsConfigResolver(
+            tsconfigResolutionFs,
+            tsconfigResolutionFs.getStandardizedAbsolutePath(join(projectPath, tsconfigPath)),
+            "utf8",
+        ).getCompilerOptions();
     };
+
+    const getJsconfigCompilerOptions = () => ({
+        ...JSON.parse(readFile(projectPath, jsconfigPath)).compilerOptions ?? {},
+        allowJs: true,
+    });
 
     const isTsProject = isFile(projectPath, tsconfigPath);
     if (hasTSConfig(config) && config.tsconfigPath && !isTsProject) { throw new Error(`Can't find tsconfig in project at path: ${ tsconfigPath }`); }
@@ -38,10 +51,12 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     const hasJsconfig = isFile(projectPath, jsconfigPath);
     if (hasJSConfig(config) && config.jsconfigPath && !hasJsconfig) { throw new Error(`Can't find jsconfig in project at path: ${ jsconfigPath }`); }
 
+    /* eslint-disable indent */
     const projectConfig: ProjectOptions =
-        isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
-            : hasJsconfig ? { compilerOptions: { ...JSON.parse(readFile(projectPath, jsconfigPath)).compilerOptions ?? {}, allowJs: true } }
-                : { compilerOptions: { allowJs: true } };
+          isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
+        : hasJsconfig ? { compilerOptions: getJsconfigCompilerOptions() }
+        : { compilerOptions: { allowJs: true } };
+    /* eslint-enable indent */
 
     const project = new Project(projectConfig);
 
@@ -56,7 +71,29 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     );
     projectFiles
         .filter(f => SUPPORTED_FILE_TYPES.some(ext => f.endsWith(ext)))
-        .forEach(f => project.addSourceFileAtPath(join(projectPath, f)));
+        .forEach(f => {
+            const filePath = join(projectPath, f);
+            const source = project.addSourceFileAtPath(filePath);
+
+            const fileDirectives = [
+                ...source.getPathReferenceDirectives(),
+                ...source.getTypeReferenceDirectives(),
+                ...source.getLibReferenceDirectives(),
+            ];
+
+            if (fileDirectives.length > 0) {
+                // Files might have triple-slash directives pointing to files outside of project source.
+                // For example, pointing to `node_modules/@types`. This causes ts-morph to fail.
+                fileDirectives
+                    .map(directive => source.getChildAtPos(directive.getPos()))
+                    .filter(isNotUndefined)
+                    .filter(Node.isCommentNode)
+                    .forEach(node => node.remove());
+
+                // Re-add file to project
+                project.createSourceFile(filePath, source.getText(), { overwrite: true });
+            }
+        });
 
     console.log(`${ tag() } Resolving dependencies`);
     const resolve = setupModuleResolution(project, join(projectPath, config.subprojectPath));
@@ -87,12 +124,12 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
         console.log(`${ tag() } ${ targetImports.length } target ${ targetName } imports`);
 
         const targetUsages = targetImports.map((imp): UsageStat[] => {
-            const name = `import ${ getImportNode(imp).print() } from ${ imp.moduleSpecifier }`;
+            const componentName = getImportNode(imp).print();
             return findUsages(getImportNode(imp)).usages
-                .filter(use => config.isValidUsage({ type: targetName, ...use }))
+                .filter(use => config.isValidUsage({ source: targetName, ...use }))
                 .map(usage => ({
-                    name,
-                    type: targetName,
+                    component_name: componentName,
+                    source: targetName,
                     imported_from: importSource(imp).resolvedSource,
                     target_node_file: usage.target.getSourceFile().getFilePath().replace(projectPath, ""),
                     usage_file: usage.use.getSourceFile().getFilePath().replace(projectPath, ""),
@@ -115,17 +152,17 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     console.log(`${ tag() } ${ homebrew.length } homebrew components`);
 
     const homebrewUsages = homebrew.map((homebrewComponent): UsageStat[] => {
-        const name = `component ${ homebrewComponent.identifier ? homebrewComponent.identifier.print() : homebrewComponent.declaration.print().replace(/\n/g, " ") }`;
+        const componentName = homebrewComponent.identifier ? homebrewComponent.identifier.print() : homebrewComponent.declaration.print().replace(/\n/g, " ");
         return findUsages(homebrewComponent.identifier ?? homebrewComponent.declaration).usages
             .filter(({ use }) => !isAnyTargetModuleOrPath(use.getSourceFile().getFilePath().replace(projectPath, ""))) // Ignore usages in target directory (in case target is a directory)
-            .filter(use => config.isValidUsage({ type: "homebrew", ...use }))
+            .filter(use => config.isValidUsage({ source: "homebrew", ...use }))
             .map(usage => {
                 const importTrace = usage.trace.reverse().find(isTraceImport);
                 const targetNodeFile = usage.target.getSourceFile().getFilePath().replace(projectPath, "");
 
                 return {
-                    name,
-                    type: "homebrew",
+                    component_name: componentName,
+                    source: "homebrew",
                     imported_from: importTrace ? importSource(importTrace.imp).resolvedSource : targetNodeFile,
                     target_node_file: targetNodeFile,
                     usage_file: usage.use.getSourceFile().getFilePath().replace(projectPath, ""),

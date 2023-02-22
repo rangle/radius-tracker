@@ -10,7 +10,7 @@ const moduleResolutionType: ModuleResolutionWarning["type"] = "module-resolution
 export const isModuleResolutionWarning = (val: unknown): val is ModuleResolutionWarning => hasType(val) && val.type === moduleResolutionType;
 
 export const setupModuleResolution = (project: Project, cwd: string): ResolveModule => {
-    const realpath = project.getModuleResolutionHost().realpath;
+    const { realpath, fileExists } = project.getModuleResolutionHost();
     if (!realpath) { throw new Error("realpath not defined on module resolution host"); }
 
     const cache = ts.createModuleResolutionCache(cwd, realpath);
@@ -40,11 +40,19 @@ export const setupModuleResolution = (project: Project, cwd: string): ResolveMod
 
         const f = project.getSourceFile(resolvedModule.resolvedFileName);
         if (!f) {
-            if (!SUPPORTED_FILE_TYPES.some(ext => moduleName.endsWith(ext))) { // TODO: test when a supported file references an existing not supported file path
+            if (!SUPPORTED_FILE_TYPES.some(ext => moduleName.endsWith(ext))) {
                 return null;
             }
 
-            throw new Error(`File not found: ${ resolvedModule.resolvedFileName }`);
+            if (fileExists(resolvedModule.resolvedFileName)) {
+                const warning: ModuleResolutionWarning = {
+                    type: "module-resolution",
+                    message: `Module '${ moduleName }' referenced from '${ containingFile }' is excluded from project configuration.`,
+                };
+                return warning;
+            }
+
+            throw new Error(`File not found: ${ resolvedModule.resolvedFileName } referenced in ${ containingFile }.`);
         }
 
         return f;

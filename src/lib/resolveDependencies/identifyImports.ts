@@ -30,8 +30,9 @@ export type CJSImport = { type: "cjs-import", importCall: CallExpression, module
 export const isCJSImport = (imp: Import): imp is CJSImport => imp.type === "cjs-import";
 
 
-export type ImportWarning = UnresolvedModuleSpecifierWarning;
+export type ImportWarning = UnresolvedModuleSpecifierWarning | UnresolvedImportEqualsDefinition;
 export type UnresolvedModuleSpecifierWarning = { type: "import-unresolved-module-specifier", message: string, moduleSpecifier: Node };
+export type UnresolvedImportEqualsDefinition = { type: "import-unresolved-import-equals-definition", message: string, imported: Node };
 
 export function identifyImports(file: SourceFile): { imports: Import[], warnings: ImportWarning[] } {
     const warnings: ImportWarning[] = [];
@@ -97,7 +98,14 @@ export function identifyImports(file: SourceFile): { imports: Import[], warnings
         .filter(Node.isImportEqualsDeclaration)
         .map((imp): ESMImportEquals | null => {
             const moduleReference = imp.getModuleReference();
-            if (!Node.isExternalModuleReference(moduleReference)) { throw new Error(`Implementation error: Expected an external module reference. Reading ${ describeNode(imp) } in ${ file.getFilePath() }`); }
+            if (!Node.isExternalModuleReference(moduleReference)) {
+                warnings.push({
+                    type: "import-unresolved-import-equals-definition",
+                    message: `Imported value is not an external module. Reading ${ describeNode(imp) } in ${ file.getFilePath() }`,
+                    imported: moduleReference,
+                });
+                return null;
+            }
 
             const moduleName = moduleReference.getExpression();
             if (!moduleName) { throw new Error(`Implementation error: Expected import equals to have a module name. Reading ${ describeNode(imp) } in ${ file.getFilePath() }`); }

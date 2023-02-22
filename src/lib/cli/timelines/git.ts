@@ -18,13 +18,35 @@ export const gitExists = () => spawnSync("git", ["--version"], { maxBuffer }).st
 
 export const getProjectPath = (cacheDir: string, config: ResolvedWorkerConfig) => join(repoDirPath(cacheDir), cacheFileName(config));
 const gitCommand = (projectPath: string, command: string) => `git --git-dir=${ join(projectPath, ".git") } --work-tree=${ projectPath } ${ command }`;
+const isShallowInfoProcessingError = (e: unknown) => e && typeof e === "object" && e.toString().toLowerCase().includes("error processing shallow info");
 export async function cloneOrUpdate(cacheDir: string, config: ResolvedWorkerConfig, cloneUrl: string, since: Date) {
     const projectPath = getProjectPath(cacheDir, config);
     if (statSync(projectPath, { throwIfNoEntry: false })) {
+        // Don't clone if already exists
         await exec(gitCommand(projectPath, "repack -d"));
-        await exec(gitCommand(projectPath, `fetch --shallow-since=${ formatDate(since) }`), { maxBuffer }); // Don't clone if already exists
+
+        try {
+            await exec(gitCommand(projectPath, `fetch --shallow-since=${ formatDate(since) }`), { maxBuffer });
+        } catch (e) {
+            if (!isShallowInfoProcessingError(e)) {
+                throw e;
+            }
+
+            // Sometimes shallow info doesn't contain enough data to process the update, so we need to fetch the entire repo
+            await exec(gitCommand(projectPath, "fetch"), { maxBuffer });
+        }
+
     } else {
-        await exec(`git clone --no-tags --single-branch --no-checkout --shallow-since=${ formatDate(since) } ${ cloneUrl } ${ projectPath }`, { maxBuffer });
+        try {
+            await exec(`git clone --no-tags --single-branch --no-checkout --shallow-since=${ formatDate(since) } ${ cloneUrl } ${ projectPath }`, { maxBuffer });
+        } catch (e) {
+            if (!isShallowInfoProcessingError(e)) {
+                throw e;
+            }
+
+            // Sometimes shallow info doesn't contain enough data to process the update, so we need to fetch the entire repo
+            await exec(`git clone --no-tags --single-branch --no-checkout ${ cloneUrl } ${ projectPath }`, { maxBuffer });
+        }
     }
 }
 export async function checkout(projectPath: string, ref: string) {

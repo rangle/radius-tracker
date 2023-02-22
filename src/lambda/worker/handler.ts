@@ -97,7 +97,11 @@ export const createHandler = (
         // TSConfig is a .json file, but it's not a json — e.g. it allows comments and `extends` references.
         const memoFsHost = new InMemoryFileSystemHost();
         allFiles.filter(f => f.endsWith(".json")).map(f => memoFsHost.writeFileSync(f, readFile(cloneFs, f)));
-        const tsconfigResolutionFs = new TransactionalFileSystem(memoFsHost);
+        const tsconfigResolutionFs = new TransactionalFileSystem({
+            fileSystem: memoFsHost,
+            skipLoadingLibFiles: true,
+            libFolderPath: undefined,
+        });
         return new TsConfigResolver(tsconfigResolutionFs, tsconfigResolutionFs.getStandardizedAbsolutePath(tsconfigPath), "utf8")
             .getCompilerOptions();
     };
