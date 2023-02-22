@@ -9,6 +9,7 @@ import { gitExists } from "./git";
 import { hasProp, isNumber, isString, StringKeys } from "../../guards";
 import { repoName } from "../util/cache";
 import { resolveStatsConfig } from "../resolveStatsConfig";
+import { concurrentQueue } from "./concurrentQueue";
 
 
 const repoUrlKey: StringKeys<WorkerConfig> = "repoUrl";
@@ -69,10 +70,12 @@ export default defineYargsModule(
 );
 
 async function collectAllStats(cacheDir: string, outfile: string, configs: ReadonlyArray<ResolvedWorkerConfig>) {
-    const pool = setupWorkerPool();
+    const { pool, size: poolSize } = setupWorkerPool();
 
     try {
-        const stats = await Promise.all(configs.map(config => getTimelineForOneRepo(cacheDir, config, pool)));
+        const concurrencyLimit = 2 * poolSize; // Proportional to pool size, but oversized on purpose to avoid waiting on network
+        const stats = await concurrentQueue(concurrencyLimit, configs, config => getTimelineForOneRepo(cacheDir, config, pool));
+
         const statsDB = await processStats(stats.map((stat, idx) => {
             const config = configs[idx];
             if (!config) {
@@ -81,7 +84,7 @@ async function collectAllStats(cacheDir: string, outfile: string, configs: Reado
 
             const repo = repoName(config.repoUrl);
             const projectName = config.subprojectPath !== "/" ? `${ repo } at ${ config.subprojectPath }` : repo;
-            return { projectName, stats: stat };
+            return { projectName, config, stats: stat };
         }));
         writeFileSync(outfile, Buffer.from(statsDB.export()));
         console.log(statsMessage(outfile));

@@ -9,7 +9,7 @@ type StatsConfigBase = {
     isIgnoredFile?: RegExp,
     isTargetModuleOrPath: RegExp | MultiTargetModuleOrPath,
     isTargetImport?: (imp: Import) => boolean,
-    isValidUsage?: (use: Usage & { type: "homebrew" | Target }) => boolean,
+    isValidUsage?: (use: Usage & { source: "homebrew" | Target }) => boolean,
     subprojectPath?: string,
 };
 
@@ -22,8 +22,9 @@ export type ResolvedStatsConfig = Required<Merge<StatsConfig>>;
 
 
 export type UsageStat = {
-    type: "homebrew" | Target,
-    name: string,
+    source: "homebrew" | Target,
+
+    component_name: string,
 
     imported_from: string,
     target_node_file: string,

@@ -13,7 +13,7 @@ import { setupWorkerPool } from "./workerPool";
 import { unexpected } from "../../guards";
 import { UsageStat } from "../sharedTypes";
 
-export const getTimelineForOneRepo = async (cacheDir: string, config: ResolvedWorkerConfig, workerPool: ReturnType<typeof setupWorkerPool>): Promise<Stats> => {
+export const getTimelineForOneRepo = async (cacheDir: string, config: ResolvedWorkerConfig, workerPool: ReturnType<typeof setupWorkerPool>["pool"]): Promise<Stats> => {
     const cloneSince = new Date();
     cloneSince.setDate(cloneSince.getDate() - (config.maxWeeks + 1) * 7);
 

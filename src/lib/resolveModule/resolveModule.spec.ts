@@ -82,4 +82,26 @@ describe("Resolve module", () => {
         const res = resolveModule("./target.js", "dependant.js");
         expect(res).toHaveProperty("type", "module-resolution");
     });
+
+    it("should warn if a file that exists on the filesystem is excluded from project sources", async () => {
+        project.getFileSystem().writeFileSync("./file.js", "");
+
+        project.createSourceFile("dependant.js", `
+            import * from "./file.js";
+        `);
+
+        const res = resolveModule("./file.js", "dependant.js");
+        expect(res).toHaveProperty("type", "module-resolution");
+    });
+
+    it("should return null for a resolved file of an unsupported format", async () => {
+        project.getFileSystem().writeFileSync("./file.png", "");
+
+        project.createSourceFile("dependant.js", `
+            import url from "./file.png";
+        `);
+
+        const res = resolveModule("./file.png", "dependant.js");
+        expect(res).toBe(null);
+    });
 });

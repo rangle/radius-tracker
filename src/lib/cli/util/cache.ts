@@ -22,7 +22,7 @@ const cacheConfigKeys: { [P in StringKeys<CacheConfig>]-?: null } = {
     jsconfigPath: null,
 };
 
-const version = 1;
+const version = 2;
 export const cacheFileName = (config: CacheConfig) => {
     const configHash = md5(JSON.stringify(
         objectKeys(config).filter(k => k in cacheConfigKeys).reduce((_obj, k) => {

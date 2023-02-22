@@ -20,7 +20,7 @@
     "task": "yarn prep && node -r ts-node/register/transpile-only ./src/tasks/tasks.ts",
     "cli": "yarn prep && node -r ts-node/register/transpile-only ./src/lib/cli/index.ts",
     "lint": "yarn task lint",
-    "prep": "yarn install --no-audit && node -r ts-node/register/transpile-only src/lib/checkEngine.ts --check-yarn",
+    "prep": "yarn install --no-audit --frozen-lockfile && node -r ts-node/register/transpile-only src/lib/checkEngine.ts --check-yarn",
     "demo-start": "yarn demo-prep && REACT_APP_API_URL=$(terraform -chdir=terraform output -json listener_outputs | jq -r '.api_invoke_url') node -r ts-node/register/transpile-only ./src/demo/run-script.ts start",
     "demo-build": "yarn demo-prep && node -r ts-node/register/transpile-only ./src/demo/run-script.ts build",
     "demo-prep": "yarn task -- build --no-test && yarn install --cwd src/demo",
@@ -51,7 +51,7 @@
     "node-worker-threads-pool": "^1.5.1",
     "semver": "^7.3.5",
     "sql.js": "^1.6.2",
-    "ts-morph": "^14.0.0",
+    "ts-morph": "17.0.1",
     "tslib": "^2.4.0",
     "typescript": "^4.5.4",
     "yargs": "^17.3.1"

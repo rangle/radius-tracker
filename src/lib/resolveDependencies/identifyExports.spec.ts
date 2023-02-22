@@ -190,6 +190,16 @@ describe("Identify exports", () => {
         expect(exports).toHaveLength(0);
     });
 
+    it("should not return duplicate typescript type exports", async () => {
+        const exports = identifyExports(project.createSourceFile("tst.js", `
+            export interface Something { label: Label; }
+            export interface Label { col: number; }
+            export interface Label { row: number; }
+        `));
+
+        expect(exports).toHaveLength(0);
+    });
+
     it("should correctly process export referenced multiple times throughout the file", async () => {
         const exports = identifyExports(project.createSourceFile("tst.js", `
             export function tst() {}

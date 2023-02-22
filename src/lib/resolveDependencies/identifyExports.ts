@@ -71,7 +71,8 @@ function findExportedDeclaration(symbol: TSSymbol, file: SourceFile) {
     const declarations = symbol.getDeclarations()
         .filter(declaration => isExportOrExportable(declaration) || declaration.getAncestors().some(isExportOrExportable))
         .filter(declaration => declaration.getSourceFile() === file)
-        .filter(declaration => !Node.isFunctionDeclaration(declaration) || declaration.hasBody());
+        .filter(declaration => !Node.isFunctionDeclaration(declaration) || declaration.hasBody())
+        .filter(declaration => !Node.isInterfaceDeclaration(declaration) && !Node.isTypeAliasDeclaration(declaration)); // Ignore types and interfaces
 
     if (declarations.length === 0) { return null; }
     if (declarations.length > 1) {
