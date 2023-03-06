@@ -24,7 +24,7 @@ jobs:
         if: ${{ env.ACT }}
         run: apt-get update && apt-get install -y rsync
       - name: Comment on PR 💬
-        if: github.refs != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main'
         uses: hasura/comment-progress@v2.2.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -63,7 +63,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           clean: false
       - name: Update PR comment 💬
-        if: github.refs != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main'
         uses: hasura/comment-progress@v2.2.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
