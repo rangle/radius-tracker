@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const nextra = require("nextra");
 
 const isGithubActions = process.env.GITHUB_ACTIONS || false;
@@ -14,20 +15,31 @@ if (isGithubActions) {
     basePath = `/${ repo }`;
 
     if (pullRequestNumber) {
-        assetPrefix += `pull/${pullRequestNumber}/`
-        basePath += `/pull/${pullRequestNumber}`
+        assetPrefix += `pull/${ pullRequestNumber }/`;
+        basePath += `/pull/${ pullRequestNumber }`;
     }
 }
 
 const withNextra = nextra({
     theme: "nextra-theme-docs",
     themeConfig: "./theme.config.jsx",
+    staticImage: true,
 });
 
-module.exports = withNextra({
-    assetPrefix,
-    basePath,
-    images: {
-        unoptimized: true,
-    },
-});
+const notSupportedForStaticExport = undefined;
+module.exports = {
+    ...withNextra({
+        assetPrefix,
+        basePath,
+        images: {
+            unoptimized: true,
+        },
+    }),
+
+    // Rewrites, redirects & headers are serverside features,
+    // and not supported in static exports.
+    // See: https://nextjs.org/docs/messages/export-no-custom-routes
+    rewrites: notSupportedForStaticExport,
+    redirects: notSupportedForStaticExport,
+    headers: notSupportedForStaticExport,
+};

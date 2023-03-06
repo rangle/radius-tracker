@@ -1,0 +1,13 @@
+.dashboardImgWrapper {
+    display: block;
+
+    position: relative;
+    aspect-ratio: 2 / 1.5;
+
+    margin-top: 20px;
+}
+
+.dashboardImgWrapper > img {
+    object-fit: contain;
+    object-position: top;
+}
