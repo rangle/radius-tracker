@@ -4,28 +4,20 @@
 # Build
 /build
 
-# Demo related artifacts
-/src/demo/node_modules
-/src/demo/package-lock.json
-/src/demo/yarn.lock
-/src/demo/build
+# Documentation stie related artifacts
+/src/docs/node_modules
+/src/docs/.next
+/src/docs/out
 
 # Misc
 npm-debug.log*
+yarn-error.log*
 
 # Webstorm config
 /.idea
 
 # TS incremental build data
 /.tsbuildinfo
-
-# Lambda related artifacts
-/src/lambda/worker/node_modules
-/src/lambda/listener/node_modules
-/src/lambda/build
-/lambda_worker.zip
-/lambda_listener.zip
-/terraform/.terraform
 
 # Prettier config
 /.prettierrc

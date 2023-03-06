@@ -5,6 +5,7 @@ import { objectKeys, StringKeys } from "../../guards";
 import { join } from "path";
 import { threadId } from "worker_threads";
 import { statSync } from "fs";
+import { cacheVersion } from "./cacheVersion";
 
 const md5 = (str: string): string => createHash("md5").update(str).digest("hex");
 const sanitize = (val: string) => val.toLowerCase().replace(/[^a-z0-9]/ig, "_");
@@ -22,7 +23,6 @@ const cacheConfigKeys: { [P in StringKeys<CacheConfig>]-?: null } = {
     jsconfigPath: null,
 };
 
-const version = 2;
 export const cacheFileName = (config: CacheConfig) => {
     const configHash = md5(JSON.stringify(
         objectKeys(config).filter(k => k in cacheConfigKeys).reduce((_obj, k) => {
@@ -35,7 +35,7 @@ export const cacheFileName = (config: CacheConfig) => {
                     : v,
     ));
 
-    return sanitize(`${ repoName(config.repoUrl) }_v${ version }_${ configHash }`);
+    return sanitize(`${ repoName(config.repoUrl) }_v${ cacheVersion }_${ configHash }`);
 };
 
 let checkedBase: string | null = null;

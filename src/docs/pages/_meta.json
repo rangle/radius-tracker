@@ -1,0 +1,38 @@
+{
+    "index": {
+        "title": "Radius Tracker",
+        "theme": {
+            "breadcrumb": false
+        }
+    },
+    "quick_start": {
+        "title": "Quick start",
+        "theme": {
+            "breadcrumb": false
+        }
+    },
+    "analysis": {
+        "title": "Analysing the output",
+        "theme": {
+            "breadcrumb": false
+        }
+    },
+    "supported_technologies": {
+        "title": "Supported technologies",
+        "theme":  {
+            "breadcrumb":  false
+        }
+    },
+    "configuration_file": {
+        "title": "Configuration file",
+        "theme":  {
+            "breadcrumb":  false
+        }
+    },
+    "ci_integration": {
+        "title": "CI Integration",
+        "theme":  {
+            "breadcrumb":  false
+        }
+    }
+}

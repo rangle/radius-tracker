@@ -3,8 +3,6 @@ import { hideBin } from "yargs/helpers";
 import { exec } from "tasklauncher";
 import { test, lint, jest, buildTasks } from "./lib";
 
-import { buildLambda, createAPI } from "./lambda";
-
 yargs(hideBin(process.argv))
     .command(
         "test", "Execute the test suite",
@@ -31,14 +29,6 @@ yargs(hideBin(process.argv))
                 default: true,
             }),
         args => exec(buildTasks, args),
-    )
-    .command(
-        "build-lambda", "Build lambdas",
-        () => exec(buildLambda),
-    )
-    .command(
-        "create-api", "Perform environment setup",
-        () => exec(createAPI),
     )
     .strictCommands()
     .strictOptions()

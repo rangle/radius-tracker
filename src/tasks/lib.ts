@@ -1,4 +1,7 @@
 import { work, cmd, detectLog } from "tasklauncher";
+import { satisfies } from "semver";
+
+import { engines as docsPackageEngines } from "../docs/package.json";
 
 type LintOptions = { fix?: boolean };
 export const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
@@ -8,7 +11,12 @@ export const jest = (opt: JestOptions) => cmd("jest ./src", opt.foreground ? () 
 
 export const typecheck = cmd("tsc -p tsconfig.json --noEmit");
 
-export const test = work(jest, typecheck, lint);
+// For the purpose of test, build the docs if engine matches
+const buildDocs = satisfies(process.version, docsPackageEngines.node)
+    ? cmd("yarn docs-build")
+    : cmd("echo Doc build skipped due to engine mismatch");
+
+export const test = work(jest, typecheck, lint, buildDocs);
 
 type BuildOptions = { test?: boolean };
 export const buildTasks = (opt: BuildOptions) => {
