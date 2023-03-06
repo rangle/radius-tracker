@@ -26,9 +26,9 @@ By default, the cache is written to `radius-tracker-cache/cache`
 Saving and restoring the cache between tracker runs will save significant CPU time
 by avoiding the re-processing of historical commits.
 
-[//]: # (TODO: link to cacheVersion.ts file)
-Cache content is versioned with a constant from `src/lib/cli/util/cacheVersion.ts` — you can use a hash of that file
-as the cache key. For example, in Github Actions you can use `hashFiles('**/cacheVersion.ts')`
+Cache content is versioned with a constant from [`src/lib/cli/util/cacheVersion.ts`](https://github.com/rangle/radius-tracker/blob/c7651f30864b50584587ebd1c75907e11d413a2a/src/lib/cli/util/cacheVersion.ts)
+— you can use a hash of that file as the cache key. For example,
+in Github Actions you can use `hashFiles('**/cacheVersion.ts')`
 
 
 ## Resource consumption
