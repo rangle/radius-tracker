@@ -18,7 +18,7 @@ jobs:
       - name: Delete Directory 🪓
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ${{ env.PR_NUM }}
           destination_dir: pull/${{ env.PR_NUM }}
       - name: Update comment on PR 💬
