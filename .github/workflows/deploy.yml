@@ -33,10 +33,10 @@ jobs:
           id: deploy-preview
           message: "Initializing deploy of documentation site preview... ⏳"
       - name: Set BASE_URL for Preview Build 🔨
-        if: github.refs != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main'
         run: echo BASE_URL="https://rangle.github.io/radius-tracker/pull/${{ env.PR_NUM }}" >> $GITHUB_ENV
       - name: Cache build artifacts 💾
-        if: github.refs == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         uses: actions/cache@v3
         id: cache
         with:
@@ -46,7 +46,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: yarn docs-build
       - name: Deploy (main branch) 🚀
-        if: github.refs == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4.2.5
         with:
           clean-exclude: pull
@@ -54,7 +54,7 @@ jobs:
           folder: src/docs/out
           token: ${{secrets.GITHUB_TOKEN}}
       - name: Deploy (PR Preview) 🔎
-        if: github.refs != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4.2.5
         with:
           branch: gh-pages
