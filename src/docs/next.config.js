@@ -36,6 +36,10 @@ module.exports = {
         },
     }),
 
+    env: {
+        assetPrefix, // Expose asset prefix to manually refer to content in `public` directory
+    },
+
     // Rewrites, redirects & headers are serverside features,
     // and not supported in static exports.
     // See: https://nextjs.org/docs/messages/export-no-custom-routes
