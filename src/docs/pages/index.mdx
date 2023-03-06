@@ -11,5 +11,5 @@ import styles from "./index.module.css";
 Radius Tracker generates reports measuring design system adoption, calculated bottom-up from individual component usage stats automatically collected from your organization repositories.
 
 <a className={ styles.dashboardImgWrapper } href="https://observablehq.com/@smoogly/design-system-metrics" target="_blank" rel="noopener noreferrer">
-    <Image fill src="/dashboard.png" alt="Sample Radius Tracker dashboard containing design system metrics covering multiple component sources, projects, and components" />
+    <Image fill src={ `${ process.env.assetPrefix }dashboard.png` } alt="Sample Radius Tracker dashboard containing design system metrics covering multiple component sources, projects, and components" />
 </a>
