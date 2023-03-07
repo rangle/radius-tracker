@@ -10,7 +10,7 @@ Using American English seems like an acceptable common ground. When in doubt, ch
 ## Project name
 
 Within the documentation, the project is referred to as "Tracker" — capitalized, and omitting the article,
-except for the main title where it is referred to as "Radius Tracker".
+except for the main title, and SEO metadata where it is referred to as "Radius Tracker".
 Articles should be used as appropriate when referring to Tracker-related things, e.g., "See the Tracker report".
 
 

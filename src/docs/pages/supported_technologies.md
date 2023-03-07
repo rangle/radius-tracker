@@ -1,3 +1,8 @@
+---
+title: Supported technologies
+description: Radius Tracker supports React with a few limitations around CSS-in-JS styling.
+---
+
 # Supported technologies
 
 Tracker currently only supports React projects written in JavaScript or TypeScript.

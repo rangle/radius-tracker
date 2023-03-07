@@ -1,3 +1,8 @@
+---
+title: Quick start
+description: Run Radius Tracker for the first time and see the first report. 
+---
+
 # Quick start
 
 Run this in a project directory you want to analyze: 

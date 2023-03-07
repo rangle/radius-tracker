@@ -66,6 +66,13 @@ export default {
         </a></span>,
     },
 
+    // Overwrite default `head` to remove Nextra SEO metadata
+    head: <>
+        <meta name="msapplication-TileColor" content="#fff" />
+        <meta httpEquiv="Content-Language" content="en" />
+        <meta name="apple-mobile-web-app-title" content="Tracker docs" />
+    </>,
+
     useNextSeoProps() {
         const { asPath } = useRouter();
         return {
