@@ -1,3 +1,9 @@
+---
+title: CI Integration
+description: Integrate Radius Tracker into your team workflows by running it on schedule in CI.
+             Learn best practices around caching, storing artifacts, and securing the codebase during processing.
+---
+
 # CI Integration
 
 We designed Tracker to run on schedule in CI so that the team can routinely review the design system adoption progress.

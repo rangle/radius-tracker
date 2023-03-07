@@ -1,3 +1,9 @@
+---
+title: Analyzing the output
+description: Analyze the adoption of your design system with the built-in Radius Tracker report or external tools.
+             Learn to generate a Tracker report from your data.
+---
+
 # Analyzing the output
 
 [//]: # (TODO: update for locally generated reports)

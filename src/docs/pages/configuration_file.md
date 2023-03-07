@@ -1,3 +1,9 @@
+---
+title: Tracker configuration
+description: Configuration file for Radius Tracker describes where to find and how to analyze each project
+             in your organization's ecosystem. Learn to improve tracking performance & remove junk from the output. 
+---
+
 # Tracker configuration
 
 We designed Tracker to collect historical usage stats from the entire ecosystem of UI projects within the organization.
