@@ -2,6 +2,7 @@ import { work, cmd, detectLog } from "tasklauncher";
 import { satisfies } from "semver";
 
 import { engines as docsPackageEngines } from "../docs/package.json";
+import { join, normalize } from "path";
 
 type LintOptions = { fix?: boolean };
 export const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
@@ -22,8 +23,19 @@ type BuildOptions = { test?: boolean };
 export const buildTasks = (opt: BuildOptions) => {
     const generateReportTemplate = cmd("yarn cli report-generate-template");
 
+    const copyFiles: { from: string, to?: string }[] = [
+        { from: "./README.md" },
+        { from: "./package.json" },
 
-    const buildLib = work(cmd("./src/tasks/setup_package_meta.sh"))
+        // Non-js files for the report template generator
+        ...["additional_styles.css", "generate_report_template.sh"]
+            .flatMap(reportFile => ["cjs", "esm"].map(target => ({
+                from: `src/lib/cli/report/${ reportFile }`,
+                to: `${ target }/cli/report/`,
+            }))),
+    ];
+    const copyTasks = work(...copyFiles.map(({ from, to }) => cmd(`cp ${ from } ${ normalize(join("build", to ?? from)) }`)));
+    const buildLib = work(copyTasks)
         .after(
             cmd("tsc -b tsconfig-lib-cjs.json"),
             cmd("tsc -b tsconfig-lib-esm.json"),
