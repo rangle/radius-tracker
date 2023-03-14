@@ -2,6 +2,7 @@ import { work, cmd, detectLog } from "tasklauncher";
 import { satisfies } from "semver";
 
 import { engines as docsPackageEngines } from "../docs/package.json";
+import { join, normalize } from "path";
 
 type LintOptions = { fix?: boolean };
 export const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
@@ -20,20 +21,35 @@ export const test = work(jest, typecheck, lint, buildDocs);
 
 type BuildOptions = { test?: boolean };
 export const buildTasks = (opt: BuildOptions) => {
-    const build = work(cmd("./src/tasks/setup_package_meta.sh"))
+    const generateReportTemplate = cmd("yarn cli report-generate-template");
+
+    const copyFiles: { from: string, to?: string }[] = [
+        { from: "./README.md" },
+        { from: "./package.json" },
+
+        // Non-js files for the report template generator
+        ...["additional_styles.css", "generate_report_template.sh"]
+            .flatMap(reportFile => ["cjs", "esm"].map(target => ({
+                from: `src/lib/cli/report/${ reportFile }`,
+                to: `${ target }/cli/report/`,
+            }))),
+    ];
+    const copyTasks = work(...copyFiles.map(({ from, to }) => cmd(`cp ${ from } ${ normalize(join("build", to ?? from)) }`)));
+    const buildLib = work(copyTasks)
         .after(
             cmd("tsc -b tsconfig-lib-cjs.json"),
             cmd("tsc -b tsconfig-lib-esm.json"),
             cmd("tsc -b tsconfig-lib-types.json"),
         );
 
-    if (!opt.test) { return build; }
+    const buildAll = work(buildLib,generateReportTemplate);
+    if (!opt.test) { return buildAll; }
 
     const launchLocalRegistry = work(cmd("verdaccio -l 8080 -c ./src/tasks/verdaccio.yml", detectLog("http://localhost:8080")))
         .after(cmd("rm -rf /tmp/verdaccio-storage"));
 
     return work(cmd("./src/tasks/execute_from_local_registry.sh")).after(
         launchLocalRegistry,
-        work(cmd("./src/tasks/publish_to_local_registry.sh")).after(launchLocalRegistry, build, test),
+        work(cmd("./src/tasks/publish_to_local_registry.sh")).after(launchLocalRegistry, buildAll, test),
     );
 };

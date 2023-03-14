@@ -18,7 +18,7 @@ We recommend scheduling Tracker to run a day or two before the rituals where the
 ## Artifacts
 
 [Tracker outputs](./analysis) are self-contained and can be archived.
-We suggest storing these artifacts for reference using [Upload Artifact](https://github.com/actions/upload-artifact)
+We suggest generating and storing a report for reference using [Upload Artifact](https://github.com/actions/upload-artifact)
 Github Action or a similar step in your CI.
 
 
