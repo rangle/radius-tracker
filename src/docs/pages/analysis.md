@@ -1,13 +1,50 @@
 # Analyzing the output
 
-[//]: # (TODO: update for locally generated reports)
 Tracker generates an SQLite database with entries for each detected component usage and,
-by default, writes it to `usages.sqlite` in the current directory.
+by default, writes it to `usages.sqlite` in the current directory. You have a few ways to visualize this data.
 
-The easiest way to visualize this data is to plug the database [into the ObservableHQ report](https://observablehq.com/@smoogly/design-system-metrics)
-to analyze the design system consumption:
+
+## Local report
+
+The easiest way to visualize the Tracker data is by generating a report using
+```sh
+npx radius-tracker report
+```
+
+To view, host the report files on an http server,
+for example, using `npx serve ./radius-tracker-report` on a local machine.
+
+This report is entirely self-contained without external references. 
+See the [CI integration guide](./ci_integration) for archiving.
+
+
+## ObservableHQ
+
+We are using the [sample ObservableHQ report](https://observablehq.com/@smoogly/design-system-metrics)
+as a template for the local reports. To make changes in that report:
 1. Fork the [sample report](https://observablehq.com/@smoogly/design-system-metrics)
-2. Replace the attached database with the Tracker output you generated
+2. Replace the attached database with the Tracker database you generated
+
+
+## Custom templates for local reports
+
+You can use a fork of an ObservableHQ report as a template for a local report generator.
+See above for forking the default report. Get an export link from `Export → Download code` of a report you want to use.
+See [ObservableHQ export documentation](https://observablehq.com/@observablehq/advanced-embeds#cell-291) for details.
+
+Paste the link into the following command to generate a report template:
+```sh
+npx radius-tracker report-generate-template https://your-export-url
+```
+
+You can then generate the report using your template:
+```sh
+npx radius-tracker report --template=./path/to/template
+```
+
+While this is the same mechanism we use to generate the bundled report template, this is an experimental feature.
+Report templates are supposed to be self-contained, and the generator is tightly coupled with the default report
+to support that. The API of the report generator is unstable, and there's no guarantee that it will work for you.
 
 
 ## Alternative reporting tools

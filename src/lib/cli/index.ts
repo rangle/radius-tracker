@@ -7,6 +7,8 @@ import { hideBin } from "yargs/helpers";
 
 import timelineCommand from "./timelines";
 import inplaceCommand from "./inplace";
+
+import reportGenerateTemplateCommand from "./report/generate_template";
 import reportCommand from "./report";
 
 yargs(hideBin(process.argv))
@@ -14,6 +16,7 @@ yargs(hideBin(process.argv))
     .command(timelineCommand)
     .command(inplaceCommand)
     .command(reportCommand)
+    .command(reportGenerateTemplateCommand)
     .strictCommands()
     .demandCommand()
     .recommendCommands()

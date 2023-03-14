@@ -27,3 +27,4 @@ yarn-error.log*
 
 # CLI output
 /usages.sqlite
+/radius-tracker-report

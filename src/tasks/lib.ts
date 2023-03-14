@@ -20,20 +20,24 @@ export const test = work(jest, typecheck, lint, buildDocs);
 
 type BuildOptions = { test?: boolean };
 export const buildTasks = (opt: BuildOptions) => {
-    const build = work(cmd("./src/tasks/setup_package_meta.sh"))
+    const generateReportTemplate = cmd("yarn cli report-generate-template");
+
+
+    const buildLib = work(cmd("./src/tasks/setup_package_meta.sh"))
         .after(
             cmd("tsc -b tsconfig-lib-cjs.json"),
             cmd("tsc -b tsconfig-lib-esm.json"),
             cmd("tsc -b tsconfig-lib-types.json"),
         );
 
-    if (!opt.test) { return build; }
+    const buildAll = work(buildLib,generateReportTemplate);
+    if (!opt.test) { return buildAll; }
 
     const launchLocalRegistry = work(cmd("verdaccio -l 8080 -c ./src/tasks/verdaccio.yml", detectLog("http://localhost:8080")))
         .after(cmd("rm -rf /tmp/verdaccio-storage"));
 
     return work(cmd("./src/tasks/execute_from_local_registry.sh")).after(
         launchLocalRegistry,
-        work(cmd("./src/tasks/publish_to_local_registry.sh")).after(launchLocalRegistry, build, test),
+        work(cmd("./src/tasks/publish_to_local_registry.sh")).after(launchLocalRegistry, buildAll, test),
     );
 };

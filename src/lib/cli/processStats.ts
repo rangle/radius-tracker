@@ -251,9 +251,11 @@ export const statsMessage = (outfile: string) => {
     return `
 
         Stats were saved to: ${ out }
-
         It's an SQLite database you can use as an input for your analysis.
-        Fork this report: https://observablehq.com/@smoogly/design-system-metrics
-        or see https://github.com/rangle/radius-tracker#report for details.
-    `.replace(/\n\s+/g, "\n");
+
+        Generate a local report by running:
+        npx radius-tracker report --database ${ out }
+
+        See https://rangle.github.io/radius-tracker/analysis for details.
+    `.replace(/\n(?!\n)\s+/g, "\n");
 };
