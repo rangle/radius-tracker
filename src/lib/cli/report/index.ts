@@ -83,7 +83,7 @@ async function copyDir(from: string, to: string): Promise<void> {
 
 async function resolveBundledTemplateDirectory() {
     // In package, report template is at the root of the package directory
-    const packagePath = join(__dirname, "..", "..", "report_template");
+    const packagePath = join(__dirname, "..", "..", "..", "report_template");
     if (await exists(packagePath)) {
         return packagePath;
     }
@@ -94,7 +94,7 @@ async function resolveBundledTemplateDirectory() {
         return devPath;
     }
 
-    throw new Error("Could not resolve a report template path. In dev, make sure to generate the template first");
+    throw new Error("Could not resolve a report template path. In dev, make sure to generate the template first.");
 }
 
 async function exists(path: string, mode?: number) {
