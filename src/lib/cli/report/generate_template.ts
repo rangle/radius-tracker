@@ -4,11 +4,11 @@ import { join } from "path";
 import { platform } from "os";
 
 // This default determines which report is added to the package at build time.
-// After updating the url, make sure to check that
+// After updating the url, run `yarn cli report-generate-template` and make sure to check that
 // a) the report itself is working correctly,
 // b) there are no errors in the browser console,
 // c) no network requests go outside of localhost.
-const defaultReportUrl = "https://api.observablehq.com/@smoogly/design-system-metrics@384.tgz?v=3";
+const defaultReportUrl = "https://api.observablehq.com/@smoogly/design-system-metrics@413.tgz?v=3";
 
 export default defineYargsModule(
     "report-generate-template [url]",
