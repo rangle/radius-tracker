@@ -1,0 +1,12 @@
+name: Artifact upload example
+on: workflow_dispatch
+jobs:
+  artifact:
+    steps:
+    - uses: actions/checkout@v3
+    - run: touch usages.sqlite
+    - run: yarn cli report
+    - uses: actions/upload-artifact@v3
+      with:
+        name: tracker-report
+        path: radius-tracker-report/*
