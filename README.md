@@ -17,9 +17,9 @@ npx radius-tracker in-place <path to project> --targetRe "^@corporation/your-des
 ```
 
 
-## [Documentation](https://rangle.github.io/radius-tracker/quickstart)
+## [Documentation](https://rangle.github.io/radius-tracker/quick_start)
 
-See the documentation on guidance for [running Tracker,](https://rangle.github.io/radius-tracker/quickstart)
+See the documentation on guidance for [running Tracker,](https://rangle.github.io/radius-tracker/quick_start)
 [analyzing the result,](https://rangle.github.io/radius-tracker/analysis)
 [configuring Tracker](https://rangle.github.io/radius-tracker/configuration_file) to process
 the entire organizational ecosystem, and [integrating into CI](https://rangle.github.io/radius-tracker/ci_integration)
