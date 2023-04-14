@@ -27,8 +27,8 @@ export default [
         // https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_protocols
         repoUrl: "https://githost.com/company/product",
         
-        // [optiona] Repository name to use in reports. Defaults to `repoUrl`.
-        repoName: "My repo",
+        // [optional] Repository name to use in reports. Defaults to `repoUrl`.
+        displayName: "My repo",
 
         // Regexp testing if an import path comes from the design system.
         // See the document below for multi-target configuration,
