@@ -36,6 +36,7 @@ const hasIsValidUsage = hasProp(isValidUsageKey);
 
 const subprojectPathKey: StringKeys<StatsConfig> = "subprojectPath";
 const hasSubprojectPath = hasProp(subprojectPathKey);
+export const defaultSubprojectPath = "/";
 
 const tsconfigPathKey: StringKeys<StatsConfig> = "tsconfigPath";
 const hasTsconfigPath = hasProp(tsconfigPathKey);
@@ -47,7 +48,7 @@ const isMultiTargetModuleOrPathDefinition = isObjectOf(isString, isRegexp);
 
 export const defaultIgnoreFileRe = /((\.(tests?|specs?|stories|story)\.)|(\/(tests?|specs?|stories|story)\/)|(\/node_modules\/)|(\/__mocks__\/)|(\.d\.ts$))/;
 export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStatsConfig => {
-    const subprojectPath = hasSubprojectPath(config) && config.subprojectPath ? config.subprojectPath : "/";
+    const subprojectPath = hasSubprojectPath(config) && config.subprojectPath ? config.subprojectPath : defaultSubprojectPath;
     if (!isString(subprojectPath)) { throw new Error(`Expected a string subproject path, got: ${ subprojectPath }`); }
 
     const tsconfigPath = hasTsconfigPath(config) ? config.tsconfigPath : null;

@@ -3,7 +3,7 @@ import { collectStats } from "../collectStats";
 import { performance } from "perf_hooks";
 import { resolveStatsConfig } from "../resolveStatsConfig";
 import { StatsConfig } from "../sharedTypes";
-import { processStats, statsMessage } from "../processStats";
+import { processStats, ProjectMetadata, statsMessage } from "../processStats";
 import { writeFileSync } from "fs";
 import { join, resolve } from "path";
 import { Merge } from "ts-toolbelt/out/Union/Merge";
@@ -48,7 +48,13 @@ export default defineYargsModule(
         };
 
         const config = resolveStatsConfig(unresolvedConfig);
-        const stats = await processStats([{ projectName: args.path ?? "Current directory", config, stats: [{
+
+        const project: ProjectMetadata = {
+            name: args.path ?? "Current directory",
+            url: args.path ?? ".",
+            subprojectPath: "/",
+        };
+        const stats = await processStats([{ project, config, stats: [{
             commit: {
                 oid: "latest",
                 weeksAgo: 0,

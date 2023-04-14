@@ -54,6 +54,7 @@ export const isObjectOf = <K extends Any.Key, V>(isKey: Guard<unknown, K>, isVal
 type Ctor<T> = (...args: any[]) => T;
 export const isInstanceof = <T>(expected: Ctor<T>) => (val: unknown): val is T => val instanceof expected;
 export const isRegexp = isInstanceof(RegExp);
+export const isDate = isInstanceof(Date as unknown as Ctor<Date>);
 
 export const isEither = <Guards extends Guard<any, unknown>[]>(...guards: Guards) => (val: GuardArrInput<Guards>): val is GuardArrOutput<Guards> => guards.some(g => g(val));
 

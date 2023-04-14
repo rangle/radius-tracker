@@ -1,24 +1,26 @@
 import {
     CommitData,
+    JsonOf,
     PostMessageOf,
-    Stats,
     ResolvedWorkerConfig,
+    Stats,
     WorkerPayload,
     WorkerResponse,
-    JsonOf,
 } from "./workerTypes";
 import { cloneOrUpdate, gitlog } from "./git";
 import { cacheFileName } from "../util/cache";
 import { setupWorkerPool } from "./workerPool";
 import { unexpected } from "../../guards";
 import { UsageStat } from "../sharedTypes";
+import { dateWeeksAgo, midnightToday } from "./dates";
 
-export const getTimelineForOneRepo = async (cacheDir: string, config: ResolvedWorkerConfig, workerPool: ReturnType<typeof setupWorkerPool>["pool"]): Promise<Stats> => {
-    const cloneSince = new Date();
-    cloneSince.setDate(cloneSince.getDate() - (config.maxWeeks + 1) * 7);
-
+export const getTimelineForOneRepo = async (
+    cacheDir: string,
+    config: ResolvedWorkerConfig,
+    workerPool: ReturnType<typeof setupWorkerPool>["pool"],
+): Promise<Stats> => {
     console.log(`Fetching ${ config.repoUrl }`);
-    await cloneOrUpdate(cacheDir, config, config.repoUrl, cloneSince);
+    await cloneOrUpdate(cacheDir, config, config.repoUrl, config.since);
 
     const timeline = await getCommitsTimeline(cacheDir, config);
     console.log(`Processing the timeline of ${ timeline.length } commits`);
@@ -67,12 +69,10 @@ async function getCommitsTimeline(cacheDir: string, config: ResolvedWorkerConfig
     const first = commitData.shift();
     if (!first) { throw new Error("No commits"); }
 
-    const midnightToday = new Date(new Date().toISOString().split("T")[0] + "T00:00:00.000Z"); // Today at 00:00
-    const targetCommits: CommitData[] = [{ ...first, weeksAgo: 0, expectedDate: midnightToday }];
-    while (targetCommits.length < config.maxWeeks && commitData.length) {
-        const expectedDate = new Date(midnightToday);
-        // Set to preceding Saturday N weeks ago — aligns all commits on a weekly grid
-        expectedDate.setDate(expectedDate.getDate() - 7 * targetCommits.length - (expectedDate.getDay() + 1) % 7);
+    const targetCommits: CommitData[] = [{ ...first, weeksAgo: 0, expectedDate: midnightToday() }];
+    while (commitData.length) {
+        const expectedDate = dateWeeksAgo(targetCommits.length);
+        if (expectedDate < config.since) { break; }
 
         const prev = targetCommits[targetCommits.length - 1];
         if (!prev) { throw new Error("Implementation error"); }

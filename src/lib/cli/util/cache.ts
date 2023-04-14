@@ -9,7 +9,6 @@ import { cacheVersion } from "./cacheVersion";
 
 const md5 = (str: string): string => createHash("md5").update(str).digest("hex");
 const sanitize = (val: string) => val.toLowerCase().replace(/[^a-z0-9]/ig, "_");
-export const repoName = (repoUrl: string) => sanitize(new URL(repoUrl).pathname.substring(1));
 
 type CacheConfig = ResolvedStatsConfig & Pick<ResolvedWorkerConfig, "repoUrl">;
 const cacheConfigKeys: { [P in StringKeys<CacheConfig>]-?: null } = {
@@ -35,7 +34,7 @@ export const cacheFileName = (config: CacheConfig) => {
                     : v,
     ));
 
-    return sanitize(`${ repoName(config.repoUrl) }_v${ cacheVersion }_${ configHash }`);
+    return sanitize(`${ config.repoUrl }_v${ cacheVersion }_${ configHash }`);
 };
 
 let checkedBase: string | null = null;
