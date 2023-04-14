@@ -1,5 +1,5 @@
 import { parentPort as parentPortImport, threadId } from "worker_threads";
-import { rmSync, writeFileSync } from "fs";
+import { rmSync, statSync, writeFileSync } from "fs";
 
 import { collectStats } from "../collectStats";
 import {
@@ -10,9 +10,9 @@ import {
 } from "./workerTypes";
 import { performance } from "perf_hooks";
 import { join } from "path";
-import { statSync } from "fs";
 import { cacheDirPath, cacheFileName, threadSpaceDirPath } from "../util/cache";
 import { getGit, getProjectPath } from "./git";
+import { Project } from "ts-morph";
 
 const parentPort = parentPortImport;
 if (!parentPort) { throw new Error("Parent port not available, code not running as a worker"); }
@@ -58,7 +58,12 @@ parentPort.on("message", configParam => {
         console.log(`${ tag() } Checking out commit ${ commit }`);
         await threadspaceRepo.checkout(commit);
 
-        const stats = await collectStats(config, tag, threadSpacePath);
+        const stats = await collectStats(
+            new Project().getFileSystem(), // Provide the disk filesystem
+            config,
+            (message: string) => `${ tag() } ${ message }`,
+            threadSpacePath,
+        );
         writeFileSync(commitCache, JSON.stringify(stats), "utf8");
 
         const success: WorkerSuccessResponse = { status: "result", result: stats };

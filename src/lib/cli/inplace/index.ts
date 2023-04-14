@@ -9,6 +9,7 @@ import { join, resolve } from "path";
 import { Merge } from "ts-toolbelt/out/Union/Merge";
 import { OptionalKeys } from "ts-toolbelt/out/Object/OptionalKeys";
 import { RequiredKeys } from "ts-toolbelt/out/Object/RequiredKeys";
+import { Project } from "ts-morph";
 
 export default defineYargsModule(
     "in-place [path]",
@@ -61,7 +62,12 @@ export default defineYargsModule(
                 ts: new Date(),
                 expectedDate: new Date(),
             },
-            stats: await collectStats(config, tag, resolve(args.path ?? process.cwd())),
+            stats: await collectStats(
+                new Project().getFileSystem(), // Provide the disk filesystem
+                config,
+                (message: string) => `${ tag() } ${ message }`,
+                resolve(args.path ?? process.cwd()),
+            ),
         }] }]);
 
         const outfile = resolve(args.outfile || join(process.cwd(), "usages.sqlite"));
