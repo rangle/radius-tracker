@@ -5,7 +5,7 @@ import { processStats, ProjectMetadata, statsMessage } from "../processStats";
 import { mkdirSync, writeFileSync } from "fs";
 import { isAbsolute, join, resolve } from "path";
 import { defineYargsModule } from "../util/defineYargsModule";
-import { gitExists } from "./git";
+import { getGit, getProjectPath, gitExists } from "./git";
 import { hasProp, isDate, isNumber, isString, StringKeys } from "../../guards";
 import { defaultSubprojectPath, resolveStatsConfig } from "../resolveStatsConfig";
 import { concurrentQueue } from "./concurrentQueue";
@@ -94,16 +94,19 @@ export default defineYargsModule(
         const configs = hasDefault(configFile) ? configFile.default : configFile;
         if (!Array.isArray(configs)) { throw new Error(`Expected an array of configs, got: ${ JSON.stringify(configs) }`); }
 
-        await collectAllStats(cacheDir, args.outfile || join(process.cwd(), "usages.sqlite"), configs.map(resolveConfig));
+        await collectAllStats(cacheDir, args.outfile || join(process.cwd(), "usages.sqlite"), configs.map(resolveConfig), getGit);
     },
 );
 
-async function collectAllStats(cacheDir: string, outfile: string, configs: ReadonlyArray<ResolvedWorkerConfig>) {
+async function collectAllStats(cacheDir: string, outfile: string, configs: ReadonlyArray<ResolvedWorkerConfig>, getGitApi: typeof getGit) {
     const { pool, size: poolSize } = setupWorkerPool();
 
     try {
         const concurrencyLimit = 2 * poolSize; // Proportional to pool size, but oversized on purpose to avoid waiting on network
-        const stats = await concurrentQueue(concurrencyLimit, configs, config => getTimelineForOneRepo(cacheDir, config, pool));
+        const stats = await concurrentQueue(concurrencyLimit, configs, config => {
+            const git = getGitApi(getProjectPath(cacheDir, config));
+            return getTimelineForOneRepo(cacheDir, config, pool, git);
+        });
 
         const statsDB = await processStats(stats.map((stat, idx) => {
             const config = configs[idx];

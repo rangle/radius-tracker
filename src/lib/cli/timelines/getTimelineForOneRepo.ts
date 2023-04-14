@@ -7,7 +7,7 @@ import {
     WorkerPayload,
     WorkerResponse,
 } from "./workerTypes";
-import { cloneOrUpdate, gitlog } from "./git";
+import { GitAPI } from "./git";
 import { cacheFileName } from "../util/cache";
 import { setupWorkerPool } from "./workerPool";
 import { unexpected } from "../../guards";
@@ -18,11 +18,12 @@ export const getTimelineForOneRepo = async (
     cacheDir: string,
     config: ResolvedWorkerConfig,
     workerPool: ReturnType<typeof setupWorkerPool>["pool"],
+    git: GitAPI,
 ): Promise<Stats> => {
     console.log(`Fetching ${ config.repoUrl }`);
-    await cloneOrUpdate(cacheDir, config, config.repoUrl, config.since);
+    await git.cloneOrUpdate(config.repoUrl, config.since);
 
-    const timeline = await getCommitsTimeline(cacheDir, config);
+    const timeline = await getCommitsTimeline(config.since, git.listCommits);
     console.log(`Processing the timeline of ${ timeline.length } commits`);
     console.log(`Cache id ${ cacheFileName(config) }`);
 
@@ -63,8 +64,8 @@ export const getTimelineForOneRepo = async (
     });
 };
 
-async function getCommitsTimeline(cacheDir: string, config: ResolvedWorkerConfig): Promise<CommitData[]> {
-    const commitData = await gitlog(cacheDir, config);
+async function getCommitsTimeline(since: Date, listCommits: GitAPI["listCommits"]): Promise<CommitData[]> {
+    const commitData = await listCommits();
 
     const first = commitData.shift();
     if (!first) { throw new Error("No commits"); }
@@ -72,7 +73,7 @@ async function getCommitsTimeline(cacheDir: string, config: ResolvedWorkerConfig
     const targetCommits: CommitData[] = [{ ...first, weeksAgo: 0, expectedDate: midnightToday() }];
     while (commitData.length) {
         const expectedDate = dateWeeksAgo(targetCommits.length);
-        if (expectedDate < config.since) { break; }
+        if (expectedDate < since) { break; }
 
         const prev = targetCommits[targetCommits.length - 1];
         if (!prev) { throw new Error("Implementation error"); }

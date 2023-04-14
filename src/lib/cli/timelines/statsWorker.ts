@@ -12,7 +12,7 @@ import { performance } from "perf_hooks";
 import { join } from "path";
 import { statSync } from "fs";
 import { cacheDirPath, cacheFileName, threadSpaceDirPath } from "../util/cache";
-import { checkout, cloneToThreadSpace, getProjectPath } from "./git";
+import { getGit, getProjectPath } from "./git";
 
 const parentPort = parentPortImport;
 if (!parentPort) { throw new Error("Parent port not available, code not running as a worker"); }
@@ -36,6 +36,8 @@ parentPort.on("message", configParam => {
     };
 
     (async () => {
+        const sourceRepo = getGit(getProjectPath(cacheDir, config));
+
         const commitCache = join(cacheDirPath(cacheDir), `commit_${ cacheFileName(config) }_${ commit }.json`);
         if (statSync(commitCache, { throwIfNoEntry: false })?.isFile()) {
             console.log(`${ tag() } Using cached stats for commit ${ commit }`);
@@ -51,10 +53,10 @@ parentPort.on("message", configParam => {
         rmSync(threadSpacePath, { force: true, recursive: true });
 
         console.log(`${ tag() } Cloning from ${ getProjectPath(cacheDir, config) }`);
-        await cloneToThreadSpace(cacheDir, config);
+        const threadspaceRepo = await sourceRepo.cloneNoCheckout(threadSpacePath);
 
         console.log(`${ tag() } Checking out commit ${ commit }`);
-        await checkout(threadSpacePath, commit);
+        await threadspaceRepo.checkout(commit);
 
         const stats = await collectStats(config, tag, threadSpacePath);
         writeFileSync(commitCache, JSON.stringify(stats), "utf8");
