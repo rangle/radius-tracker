@@ -1,36 +1,65 @@
 import { ResolvedWorkerConfig, WorkerConfig } from "./workerTypes";
 import { setupWorkerPool } from "./workerPool";
 import { getTimelineForOneRepo } from "./getTimelineForOneRepo";
-import { processStats, statsMessage } from "../processStats";
+import { processStats, ProjectMetadata, statsMessage } from "../processStats";
 import { mkdirSync, writeFileSync } from "fs";
 import { isAbsolute, join, resolve } from "path";
 import { defineYargsModule } from "../util/defineYargsModule";
 import { gitExists } from "./git";
-import { hasProp, isNumber, isString, StringKeys } from "../../guards";
-import { repoName } from "../util/cache";
-import { resolveStatsConfig } from "../resolveStatsConfig";
+import { hasProp, isDate, isNumber, isString, StringKeys } from "../../guards";
+import { defaultSubprojectPath, resolveStatsConfig } from "../resolveStatsConfig";
 import { concurrentQueue } from "./concurrentQueue";
+import { dateWeeksAgo } from "./dates";
 
 
 const repoUrlKey: StringKeys<WorkerConfig> = "repoUrl";
 const hasRepoUrl = hasProp(repoUrlKey);
 
+const displayNameKey: StringKeys<WorkerConfig> = "displayName";
+const hasDisplayName = hasProp(displayNameKey);
+
 const maxWeeksKey: StringKeys<WorkerConfig> = "maxWeeks";
 const hasMaxWeeks = hasProp(maxWeeksKey);
 
+const sinceKey: StringKeys<WorkerConfig> = "since";
+const hasSince = hasProp(sinceKey);
+
 const resolveConfig = (config: unknown): ResolvedWorkerConfig => {
+    const statsConfig = resolveStatsConfig(config);
+
     if (!hasRepoUrl(config)) { throw new Error(`Config has no repo url: ${ JSON.stringify(config) }`); }
     const repoUrl = config.repoUrl;
     if (!repoUrl || !isString(repoUrl)) { throw new Error(`Expected a string repo URL, got: ${ repoUrl }`); }
 
-    if (!hasMaxWeeks(config)) { throw new Error(`Config does not specify max weeks to process: ${ JSON.stringify(config) }`); }
-    const maxWeeks = config.maxWeeks;
-    if (!maxWeeks || !isNumber(maxWeeks)) { throw new Error(`Expected max weeks to be a number, got: ${ maxWeeks }`); }
+    if (!hasRepoUrl(config)) { throw new Error(`Config has no repo url: ${ JSON.stringify(config) }`); }
+    const defaultDisplayName = statsConfig.subprojectPath === defaultSubprojectPath ? config.repoUrl : `${ config.repoUrl } at ${ statsConfig.subprojectPath }`;
+    const displayName = (hasDisplayName(config) ? config.displayName : defaultDisplayName) ?? defaultDisplayName;
+    if (!displayName || !isString(displayName)) { throw new Error(`Expected a string project display name if given, got: ${ displayName }`); }
+
+
+    let since: Date | null = null;
+    if (hasMaxWeeks(config) && hasSince(config)) { throw new Error(`Config specifies both 'since' and 'maxWeeks' keys: ${ JSON.stringify(config) }`); }
+    if (hasMaxWeeks(config)) {
+        const maxWeeks = config.maxWeeks;
+        if (!maxWeeks || !isNumber(maxWeeks)) { throw new Error(`Expected 'maxWeeks' to be a number, got: ${ maxWeeks }`); }
+        if (maxWeeks < 1) { throw new Error(`Expected 'maxWeeks' to be a positive number, got: ${ maxWeeks }`); }
+        since = dateWeeksAgo(maxWeeks); // Backwards compatible conversion from `maxWeeks` to explicit `since`
+    }
+
+    if (hasSince(config)) {
+        const configSince = config.since;
+        if (!configSince || !isDate(configSince)) { throw new Error(`Expected 'since' to be a Date, got: ${ configSince }`); }
+        if (configSince > new Date()) { throw new Error(`Expected 'since' to be in the past, got: ${ configSince }`); }
+        since = configSince;
+    }
+
+    if (!since) { throw new Error(`Config must specify either 'maxWeeks' or 'since' keys: ${ JSON.stringify(config) }`); }
 
     return {
         repoUrl,
-        maxWeeks,
-        ...resolveStatsConfig(config),
+        displayName,
+        since,
+        ...statsConfig,
     };
 };
 
@@ -78,13 +107,14 @@ async function collectAllStats(cacheDir: string, outfile: string, configs: Reado
 
         const statsDB = await processStats(stats.map((stat, idx) => {
             const config = configs[idx];
-            if (!config) {
-                throw new Error(`Could not find a config at idx '${ idx }'`);
-            }
+            if (!config) { throw new Error(`Could not find a config at idx '${ idx }'`); }
 
-            const repo = repoName(config.repoUrl);
-            const projectName = config.subprojectPath !== "/" ? `${ repo } at ${ config.subprojectPath }` : repo;
-            return { projectName, config, stats: stat };
+            const project: ProjectMetadata = {
+                name: config.displayName,
+                url: config.repoUrl,
+                subprojectPath: config.subprojectPath,
+            };
+            return { project, config, stats: stat };
         }));
         writeFileSync(outfile, Buffer.from(statsDB.export()));
         console.log(statsMessage(outfile));

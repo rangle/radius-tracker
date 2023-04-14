@@ -2,11 +2,13 @@ import { Primitive } from "ts-toolbelt/out/Misc/Primitive";
 import { StatsConfig, UsageStat } from "../sharedTypes";
 import { Merge } from "ts-toolbelt/out/Union/Merge";
 
-export type WorkerConfig = StatsConfig & {
+const maxWeeksKey = "maxWeeks";
+type DurationConfig = { [maxWeeksKey]: number } | { since: Date };
+export type WorkerConfig = StatsConfig & DurationConfig & {
     repoUrl: string,
-    maxWeeks: number,
+    displayName?: string,
 };
-export type ResolvedWorkerConfig = Required<Merge<WorkerConfig>>;
+export type ResolvedWorkerConfig = Omit<Required<Merge<WorkerConfig>>, typeof maxWeeksKey>;
 
 export type WorkerSuccessResponse = { status: "result", result: UsageStat[] };
 export type WorkerFailureResponse = { status: "error", error: unknown };

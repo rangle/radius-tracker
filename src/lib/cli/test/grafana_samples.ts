@@ -19,7 +19,8 @@ const targets = {
     reactstrap: /^reactstrap/,
 };
 
-const maxWeeks = 52 * 5;
+const since = new Date("2018-04-01");
+const maxDate = (a: Date, b: Date) => a > b ? a : b;
 const samples: WorkerConfig[] = [ // TODO: specify ts/js configs explicitly where necessary
     {
         repoUrl: "https://github.com/grafana/grafana.git",
@@ -28,13 +29,16 @@ const samples: WorkerConfig[] = [ // TODO: specify ts/js configs explicitly wher
             ...targets,
             grafana: /((^@grafana\/ui)|(\/packages\/grafana-ui))(?!.*\.scss$)/, // @grafana/ui or /packages/grafana-ui
         },
-        maxWeeks: maxWeeks,
+        since,
     },
     {
-        repoUrl: "https://github.com/percona/grafana-dashboards.git",
+        repoUrl: "ssh://git@github.com/percona/grafana-dashboards.git", // Example of an SSH url
         subprojectPath: "/pmm-app",
         isTargetModuleOrPath: targets,
-        maxWeeks: Math.min(230, maxWeeks), // TODO: there's no `pmm-app` folder before then
+        since: maxDate(
+            new Date("2017-11-19"), // There's no `pmm-app` folder before then
+            since,
+        ),
     },
 
     // Github code search for `in:file+path:/+filename:package.json+grafana+ui+NOT+datasource`
@@ -361,7 +365,7 @@ const samples: WorkerConfig[] = [ // TODO: specify ts/js configs explicitly wher
         repoUrl: "https://github.com/" + repoRef,
         subprojectPath: "/",
         isTargetModuleOrPath: targets,
-        maxWeeks: maxWeeks,
+        since,
     })),
 
     // Non-deprecated panels & apps from grafana website,
@@ -433,7 +437,7 @@ const samples: WorkerConfig[] = [ // TODO: specify ts/js configs explicitly wher
         repoUrl,
         subprojectPath: "/",
         isTargetModuleOrPath: targets,
-        maxWeeks: maxWeeks,
+        since,
     })),
 
     // "panel" projects in the "grafana" github org
@@ -450,7 +454,7 @@ const samples: WorkerConfig[] = [ // TODO: specify ts/js configs explicitly wher
         repoUrl: repoUrl + ".git",
         subprojectPath: "/",
         isTargetModuleOrPath: targets,
-        maxWeeks: maxWeeks,
+        since,
     })),
 ];
 

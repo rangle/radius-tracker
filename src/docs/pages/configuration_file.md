@@ -26,14 +26,21 @@ export default [
         // This URL can use any protocol git supports, including SSH and local files.
         // https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols#_the_protocols
         repoUrl: "https://githost.com/company/product",
+        
+        // [optiona] Repository name to use in reports. Defaults to `repoUrl`.
+        repoName: "My repo",
 
         // Regexp testing if an import path comes from the design system.
         // See the document below for multi-target configuration,
         // and handling file targets.
         isTargetModuleOrPath: /^@company\/design-system/,
 
-        // How far into history should Tracker look.
-        // Positive number. Set to `Infinity` to process the entire project history.
+        // How far into history should Tracker look — a date in the past.
+        // Conflicts with `maxWeeks`
+        since: new Date("2021-03-12"),
+
+        // Alternative way to specify how far into history Tracker would look.
+        // Conflicts with `since` — prefer using `since` instead to set an explicit date.
         maxWeeks: 52,
 
         // [optional] Subproject path denotes where in the monorepo the project code is located

@@ -7,8 +7,16 @@ import { ResolvedStatsConfig, UsageStat } from "./sharedTypes";
 import { version } from "../packageInfo";
 import { relative } from "path";
 
+export type ProjectMetadata = {
+    name: string,
+    url: string,
+    subprojectPath: string,
+};
 export const processStats = async ( // TODO: include warnings in the output
-    allStats: { projectName: string, config: ResolvedStatsConfig, stats: Stats }[],
+    allStats: {
+        project: ProjectMetadata,
+        config: ResolvedStatsConfig, stats: Stats,
+    }[],
 ): Promise<Database> => {
     const SQL = await initSqlight();
     const db = new SQL.Database();
@@ -22,7 +30,7 @@ export const processStats = async ( // TODO: include warnings in the output
     `);
     const meta: { [key: string]: string } = {
         version,
-        schemaVersion: "2",
+        schemaVersion: "3",
         collectedAt: new Date().toISOString(),
     };
     objectKeys(meta).forEach(key => {
@@ -44,7 +52,9 @@ export const processStats = async ( // TODO: include warnings in the output
     db.run(`
         CREATE TABLE projects (
             id INTEGER PRIMARY KEY, 
-            project TEXT UNIQUE
+            name TEXT,
+            url TEXT,
+            subproject_path TEXT
         );
     `);
     db.run(`
@@ -233,9 +243,12 @@ export const processStats = async ( // TODO: include warnings in the output
         }
     };
 
-    for (const { projectName, stats: projectStats } of allStats) {
-        console.log(`Processing stats for ${ projectName }`);
-        const projectId = execReturning("INSERT INTO projects(project) VALUES($0) RETURNING id", [projectName]);
+    for (const { project, stats: projectStats } of allStats) {
+        console.log(`Processing stats for ${ project.name }`);
+        const projectId = execReturning(`
+            INSERT INTO projects(name, url, subproject_path)
+            VALUES($0, $1, $2) RETURNING id
+        `, [project.name, project.url, project.subprojectPath]);
         if (typeof projectId !== "number") { throw new Error("Numeric project id expected"); }
 
         for (const pointInTime of projectStats) {
