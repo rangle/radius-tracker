@@ -1,8 +1,6 @@
 import { join } from "path";
-import { Buffer } from "buffer";
-import { readdirSync, readFileSync, statSync } from "fs";
 
-import { Node, Project, ProjectOptions } from "ts-morph";
+import { CompilerOptions, FileSystemHost, Node, Project } from "ts-morph";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
 
 import { hasProp, isNotUndefined, isRegexp, objectEntries, objectValues } from "../guards";
@@ -20,15 +18,20 @@ const yarnDirRe = /\/\.yarn\//;
 
 const hasTSConfig = hasProp("tsconfigPath");
 const hasJSConfig = hasProp("jsconfigPath");
-export async function collectStats(config: ResolvedStatsConfig, tag: () => string, projectPath: string): Promise<UsageStat[]> {
+export async function collectStats(
+    filesystem: FileSystemHost,
+    config: ResolvedStatsConfig,
+    log: (message: string) => void,
+    projectPath: string,
+): Promise<UsageStat[]> {
     const tsconfigPath = join(config.subprojectPath, (hasTSConfig(config) && config.tsconfigPath) || "tsconfig.json");
     const jsconfigPath = join(config.subprojectPath, (hasJSConfig(config) && config.jsconfigPath) || "jsconfig.json");
 
-    console.log(`${ tag() } Setting up ts-morph project`);
+    log("Setting up ts-morph project");
     const getTsconfigCompilerOptions = () => {
         // TSConfig is a .json file, but it's not a JSON — e.g. it allows comments and composes `extends` references.
         const tsconfigResolutionFs = new TransactionalFileSystem({
-            fileSystem: new Project({}).getFileSystem(),
+            fileSystem: filesystem,
             skipLoadingLibFiles: true,
             libFolderPath: undefined,
         });
@@ -41,38 +44,40 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
     };
 
     const getJsconfigCompilerOptions = () => ({
-        ...JSON.parse(readFile(projectPath, jsconfigPath)).compilerOptions ?? {},
+        ...JSON.parse(filesystem.readFileSync(join(projectPath, jsconfigPath), "utf8")).compilerOptions ?? {},
         allowJs: true,
     });
 
-    const isTsProject = isFile(projectPath, tsconfigPath);
+    const isTsProject = isFile(filesystem, join(projectPath, tsconfigPath));
     if (hasTSConfig(config) && config.tsconfigPath && !isTsProject) { throw new Error(`Can't find tsconfig in project at path: ${ tsconfigPath }`); }
 
-    const hasJsconfig = isFile(projectPath, jsconfigPath);
+    const hasJsconfig = isFile(filesystem, join(projectPath, jsconfigPath));
     if (hasJSConfig(config) && config.jsconfigPath && !hasJsconfig) { throw new Error(`Can't find jsconfig in project at path: ${ jsconfigPath }`); }
 
     /* eslint-disable indent */
-    const projectConfig: ProjectOptions =
-          isTsProject ? { compilerOptions: getTsconfigCompilerOptions() }
-        : hasJsconfig ? { compilerOptions: getJsconfigCompilerOptions() }
-        : { compilerOptions: { allowJs: true } };
+    const compilerOptions: CompilerOptions =
+          isTsProject ? getTsconfigCompilerOptions()
+        : hasJsconfig ? getJsconfigCompilerOptions()
+        : { allowJs: true };
     /* eslint-enable indent */
 
-    const project = new Project(projectConfig);
+    const project = new Project({
+        fileSystem: filesystem,
+        compilerOptions,
+    });
 
-    console.log(`${ tag() } Populating ts-morph project`);
+    log("Populating ts-morph project");
     const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;
     const projectFiles = listFiles(
-        projectPath,
-        config.subprojectPath,
+        filesystem,
+        join(projectPath, config.subprojectPath),
         f => (allowJs || !jsRe.test(f))
             && !yarnDirRe.test(f)
             && !config.isIgnoredFile.test(f),
     );
     projectFiles
         .filter(f => SUPPORTED_FILE_TYPES.some(ext => f.endsWith(ext)))
-        .forEach(f => {
-            const filePath = join(projectPath, f);
+        .forEach(filePath => {
             const source = project.addSourceFileAtPath(filePath);
 
             const fileDirectives = [
@@ -95,7 +100,7 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
             }
         });
 
-    console.log(`${ tag() } Resolving dependencies`);
+    log("Resolving dependencies");
     const resolve = setupModuleResolution(project, join(projectPath, config.subprojectPath));
     const dependencies = resolveDependencies(project, resolve);
 
@@ -107,7 +112,7 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
         return { containingFilePath: containingFilePath.replace(projectPath, ""), resolvedSource };
     };
 
-    console.log(`${ tag() } Finding target imports`);
+    log("Finding target imports");
 
     const isTargetModuleOrPathMap = isRegexp(config.isTargetModuleOrPath) ? { target: config.isTargetModuleOrPath } : config.isTargetModuleOrPath;
 
@@ -121,7 +126,7 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
                 && isTargetModuleOrPath.test(resolvedSource)      // Resolved source file is a target import,
                 && config.isTargetImport(imp);                    // And further custom checks pass OK
         });
-        console.log(`${ tag() } ${ targetImports.length } target ${ targetName } imports`);
+        log(`${ targetImports.length } target ${ targetName } imports`);
 
         const targetUsages = targetImports.map((imp): UsageStat[] => {
             const componentName = getImportNode(imp).print();
@@ -135,9 +140,9 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
                     usage_file: usage.use.getSourceFile().getFilePath().replace(projectPath, ""),
                 }));
         }).flat();
-        console.log(`${ tag() } Targets (${ targetName }):`);
-        console.log(componentUsageDistribution(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
-        console.log(usageDistributionAcrossFileTree(targetUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
+        log(`Targets (${ targetName }):`);
+        componentUsageDistribution(targetUsages).split("\n").forEach(log);
+        usageDistributionAcrossFileTree(targetUsages).split("\n").forEach(log);
 
         return targetUsages;
     });
@@ -149,7 +154,7 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
 
         // Ignore homebrew files detected in the target file (happens if the target is a directory in the project)
         .filter(component => !isAnyTargetModuleOrPath(component.declaration.getSourceFile().getFilePath().replace(projectPath, "")));
-    console.log(`${ tag() } ${ homebrew.length } homebrew components`);
+    log(`${ homebrew.length } homebrew components`);
 
     const homebrewUsages = homebrew.map((homebrewComponent): UsageStat[] => {
         const componentName = homebrewComponent.identifier ? homebrewComponent.identifier.print() : homebrewComponent.declaration.print().replace(/\n/g, " ");
@@ -169,35 +174,34 @@ export async function collectStats(config: ResolvedStatsConfig, tag: () => strin
                 };
             });
     }).flat();
-    console.log(`${ tag() } Homebrew:`);
-    console.log(componentUsageDistribution(homebrewUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
-    console.log(usageDistributionAcrossFileTree(homebrewUsages).split("\n").map(line => `${ tag() } ${ line }`).join("\n"));
-
+    log("Homebrew:");
+    componentUsageDistribution(homebrewUsages).split("\n").forEach(log);
+    usageDistributionAcrossFileTree(homebrewUsages).split("\n").forEach(log);
 
     return [...allTargetUsages.flat(), ...homebrewUsages];
 }
 
-function isFile(projectPath: string, path: string): boolean {
-    return statSync(join(projectPath, path), { throwIfNoEntry: false })?.isFile() ?? false;
+export function isFile(filesystem: FileSystemHost, path: string): boolean {
+    try {
+        return filesystem.fileExistsSync(path);
+    } catch (e) {
+        return false;
+    }
 }
 
-function readFile(projectPath: string, path: string): string {
-    const data = readFileSync(join(projectPath, path));
-    return Buffer.from(data).toString("utf8");
-}
-
-function listFiles(projectPath: string, path: string, filter: (f: string) => boolean): string[] {
+export function listFiles(
+    filesystem: FileSystemHost,
+    path: string,
+    filter: (f: string) => boolean,
+): string[] {
     const files: string[] = [];
-    const dir = readdirSync(join(projectPath, path));
-    for (const p of dir) {
-        const filepath = join(path, p);
-        if (filepath === "/.git") { continue; } // Ignore git contents
-        if (!filter(filepath)) { continue; } // Skip ignored files
+    const dir = filesystem.readDirSync(path);
+    for (const stat of dir) {
+        if (stat.name.replace(path, "") === "/.git") { continue; } // Ignore git contents
+        if (!filter(stat.name)) { continue; } // Skip ignored files
 
-        const stat = statSync(join(projectPath, filepath), { throwIfNoEntry: false });
-        if (!stat) { continue; } // TODO: warn?
-        if (stat.isFile()) { files.push(filepath); }
-        if (stat.isDirectory()) { files.push(...listFiles(projectPath, filepath, filter)); }
+        if (stat.isFile) { files.push(stat.name); }
+        if (stat.isDirectory) { files.push(...listFiles(filesystem, stat.name, filter)); }
     }
     return files;
 }
