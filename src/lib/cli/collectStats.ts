@@ -48,10 +48,10 @@ export async function collectStats(
         allowJs: true,
     });
 
-    const isTsProject = isFile(filesystem, projectPath, tsconfigPath);
+    const isTsProject = isFile(filesystem, join(projectPath, tsconfigPath));
     if (hasTSConfig(config) && config.tsconfigPath && !isTsProject) { throw new Error(`Can't find tsconfig in project at path: ${ tsconfigPath }`); }
 
-    const hasJsconfig = isFile(filesystem, projectPath, jsconfigPath);
+    const hasJsconfig = isFile(filesystem, join(projectPath, jsconfigPath));
     if (hasJSConfig(config) && config.jsconfigPath && !hasJsconfig) { throw new Error(`Can't find jsconfig in project at path: ${ jsconfigPath }`); }
 
     /* eslint-disable indent */
@@ -70,16 +70,14 @@ export async function collectStats(
     const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;
     const projectFiles = listFiles(
         filesystem,
-        projectPath,
-        config.subprojectPath,
+        join(projectPath, config.subprojectPath),
         f => (allowJs || !jsRe.test(f))
             && !yarnDirRe.test(f)
             && !config.isIgnoredFile.test(f),
     );
     projectFiles
         .filter(f => SUPPORTED_FILE_TYPES.some(ext => f.endsWith(ext)))
-        .forEach(f => {
-            const filePath = join(projectPath, f);
+        .forEach(filePath => {
             const source = project.addSourceFileAtPath(filePath);
 
             const fileDirectives = [
@@ -183,24 +181,27 @@ export async function collectStats(
     return [...allTargetUsages.flat(), ...homebrewUsages];
 }
 
-function isFile(filesystem: FileSystemHost, projectPath: string, path: string): boolean {
+export function isFile(filesystem: FileSystemHost, path: string): boolean {
     try {
-        return filesystem.fileExistsSync(join(projectPath, path));
+        return filesystem.fileExistsSync(path);
     } catch (e) {
         return false;
     }
 }
 
-function listFiles(filesystem: FileSystemHost, projectPath: string, path: string, filter: (f: string) => boolean): string[] {
+export function listFiles(
+    filesystem: FileSystemHost,
+    path: string,
+    filter: (f: string) => boolean,
+): string[] {
     const files: string[] = [];
-    const dir = filesystem.readDirSync(join(projectPath, path));
+    const dir = filesystem.readDirSync(path);
     for (const stat of dir) {
-        const filepath = join(path, stat.name);
-        if (filepath === "/.git") { continue; } // Ignore git contents
-        if (!filter(filepath)) { continue; } // Skip ignored files
+        if (stat.name.replace(path, "") === "/.git") { continue; } // Ignore git contents
+        if (!filter(stat.name)) { continue; } // Skip ignored files
 
-        if (stat.isFile) { files.push(filepath); }
-        if (stat.isDirectory) { files.push(...listFiles(filesystem, projectPath, filepath, filter)); }
+        if (stat.isFile) { files.push(stat.name); }
+        if (stat.isDirectory) { files.push(...listFiles(filesystem, stat.name, filter)); }
     }
     return files;
 }

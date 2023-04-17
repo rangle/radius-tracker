@@ -13,6 +13,7 @@ import { join } from "path";
 import { cacheDirPath, cacheFileName, threadSpaceDirPath } from "../util/cache";
 import { getGit, getProjectPath } from "./git";
 import { Project } from "ts-morph";
+import { clearInterval } from "timers";
 
 const parentPort = parentPortImport;
 if (!parentPort) { throw new Error("Parent port not available, code not running as a worker"); }
@@ -28,10 +29,10 @@ parentPort.on("message", configParam => {
     };
 
     let prev: number | null = null;
-    const tag = () => {
+    const tag = (keepTimestamp = false) => {
         const ts = performance.now();
-        const tg = `[Thread ${ threadId } - ${ Math.floor(prev ? (ts - prev) / 1000 : 0) }s]`;
-        prev = ts;
+        const tg = `[Thread ${ threadId } - ${ config.displayName } - ${ Math.floor(prev ? (ts - prev) / 1000 : 0) }s]`;
+        if (!keepTimestamp) { prev = ts; }
         return tg;
     };
 
@@ -58,14 +59,16 @@ parentPort.on("message", configParam => {
         console.log(`${ tag() } Checking out commit ${ commit }`);
         await threadspaceRepo.checkout(commit);
 
+        const interval = setInterval(() => console.log(`${ tag(true) } still running`), 60000);
         const stats = await collectStats(
             new Project().getFileSystem(), // Provide the disk filesystem
             config,
-            (message: string) => `${ tag() } ${ message }`,
+            (message: string) => console.log(`${ tag() } ${ message }`),
             threadSpacePath,
         );
-        writeFileSync(commitCache, JSON.stringify(stats), "utf8");
+        clearInterval(interval);
 
+        writeFileSync(commitCache, JSON.stringify(stats), "utf8");
         const success: WorkerSuccessResponse = { status: "result", result: stats };
         parentPort.postMessage(success);
     })().catch(err => {

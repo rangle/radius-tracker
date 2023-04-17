@@ -50,13 +50,14 @@ export const setupGitAPI = (
                 }
             };
 
-            if (fileExists(join(projectPath, ".git"))) {
+            const dotGitPath = join(projectPath, ".git");
+            if (fileExists(dotGitPath)) {
                 // Don't clone if already exists
                 await exec(gitCommand(projectPath, "repack -d"));
                 await retryOnShallowInfoProcessingError("fetch");
             } else {
                 // Clone just the main branch
-                await retryOnShallowInfoProcessingError("git clone --no-tags --single-branch --no-checkout", `${ cloneUrl } ${ projectPath }`);
+                await retryOnShallowInfoProcessingError("clone --no-tags --single-branch --no-checkout", `${ cloneUrl } ${ dotGitPath }`);
             }
         }
 

@@ -65,7 +65,7 @@ export default defineYargsModule(
             stats: await collectStats(
                 new Project().getFileSystem(), // Provide the disk filesystem
                 config,
-                (message: string) => `${ tag() } ${ message }`,
+                (message: string) => console.log(`${ tag() } ${ message }`),
                 resolve(args.path ?? process.cwd()),
             ),
         }] }]);
