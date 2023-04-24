@@ -153,6 +153,7 @@ const isIdentifierDefinitionParent = (node: Node, warn: Warn): boolean => {
     if (Node.isImportSpecifier(node)) { return true; }
     if (Node.isImportClause(node)) { return true; }
     if (Node.isNamespaceImport(node)) { return true; }
+    if (Node.isImportEqualsDeclaration(node)) { return true; }
     if (Node.isVariableDeclaration(node)) { return true; }
     if (Node.isClassDeclaration(node)) { return true; }
     if (Node.isParameterDeclaration(node)) { return true; }
@@ -291,8 +292,13 @@ const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn):
         return []; // Don't follow the left side of a binary expression
     }
 
-    if (Node.isTypeQuery(parent) || Node.isQualifiedName(parent)) {
+    if (Node.isTypeQuery(parent)) {
         return []; // Don't follow into the types
+    }
+
+    if (Node.isQualifiedName(parent) && !parent.getFirstAncestor(Node.isImportEqualsDeclaration)) {
+        // Don't follow into the types, except inside `import x = ...`
+        return [];
     }
 
     return [{ node: parent, aliasPath, trace: [], isPotentialUsage: false }];
@@ -301,7 +307,7 @@ const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn):
 // Given a node of the particular type on the left side — how should it be followed?
 const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<FollowStrategy> => {
     // TODO: annotate each check with the code it's dealing with
-    if (Node.isStatement(node) && !Node.isClassDeclaration(node)) { return []; }
+    if (Node.isStatement(node) && !Node.isClassDeclaration(node) && !Node.isImportEqualsDeclaration(node)) { return []; }
     if (Node.isAwaitExpression(node)) { return []; }
     if (Node.isIdentifier(node)) { return []; }
     if (Node.isVariableDeclarationList(node)) { return []; }
@@ -483,8 +489,20 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
             : [];
     }
 
+    if (Node.isImportEqualsDeclaration(node)) {
+        if (node.isTypeOnly()) { return []; }
+        return [{ node: node.getNameNode(), aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false }];
+    }
+
     if (Node.isBinaryExpression(node)) {
         return [{ node: node.getRight(), aliasPath: [], trace: [], isPotentialUsage: false }];
+    }
+
+    if (Node.isQualifiedName(node)) {
+        // Don't step into `namespace.entity` constructs, e.g. in `import = namespace.entity`
+        // TODO: This might need to check for `aliasPath` match, if there's a use case for component tracking.
+        //       So far seems unlikely that a component would be created inside a namespace export in production code.
+        return [];
     }
 
     warn({
