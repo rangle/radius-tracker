@@ -1161,6 +1161,18 @@ describe("findUsages", () => { // TODO: test traces
         assertUsagesFound();
     });
 
+    it("should support import assignments", async () => {
+        project.createSourceFile("usage.ts", `
+            //       #--------
+            import { languages } from "monaco-editor";
+            import CompletionItemProvider = languages.CompletionItemProvider;
+            
+            //          *---------------------
+            console.log(CompletionItemProvider);
+        `);
+        assertUsagesFound();
+    });
+
     // TODO: test PropertyDeclaration
     // Identifier 'PanelContextRoot' in 'export class CanvasPanel extends Component<Props, State> {
     //     static contextType = PanelContextRoot;
