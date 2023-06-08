@@ -113,7 +113,6 @@ export async function collectStats(
     };
 
     log("Finding target imports");
-
     const isTargetModuleOrPathMap = isRegexp(config.isTargetModuleOrPath) ? { target: config.isTargetModuleOrPath } : config.isTargetModuleOrPath;
 
     const allTargetRe = objectValues(isTargetModuleOrPathMap);
@@ -148,15 +147,35 @@ export async function collectStats(
     });
 
 
+    const domReferenceFactories: ReadonlyArray<{ name: string, re: RegExp }> = [
+        { name: "styled-components", re: /styled-components/ },
+        { name: "stitches", re: /^@stitches/ },
+    ];
+    const factoryDomReferences = domReferenceFactories
+        .map(f => {
+            const nodes = dependencies
+                .filterImports(imp => f.re.test(imp.moduleSpecifier))
+                .map(getImportNode)
+                .map(n => findUsages(n))
+                .flatMap(u => u.usages)
+                .map(u => u.use);
+
+            return { name: f.name, nodes };
+        })
+        .reduce((_agg, { name, nodes }) => {
+            _agg[name] = new Set(nodes);
+            return _agg;
+        }, {} as Record<string, Set<Node>>);
+
+
     const homebrew = project.getSourceFiles()
-        .map(detectHomebrew)
-        .reduce((a, b) => [...a, ...b], [])
+        .flatMap(file => detectHomebrew(file, factoryDomReferences))
 
         // Ignore homebrew files detected in the target file (happens if the target is a directory in the project)
         .filter(component => !isAnyTargetModuleOrPath(component.declaration.getSourceFile().getFilePath().replace(projectPath, "")));
     log(`${ homebrew.length } homebrew components`);
 
-    const homebrewUsages = homebrew.map((homebrewComponent): UsageStat[] => {
+    const homebrewUsages = homebrew.flatMap((homebrewComponent): UsageStat[] => {
         const componentName = homebrewComponent.identifier ? homebrewComponent.identifier.print() : homebrewComponent.declaration.print().replace(/\n/g, " ");
         return findUsages(homebrewComponent.identifier ?? homebrewComponent.declaration).usages
             .filter(({ use }) => !isAnyTargetModuleOrPath(use.getSourceFile().getFilePath().replace(projectPath, ""))) // Ignore usages in target directory (in case target is a directory)
@@ -168,13 +187,19 @@ export async function collectStats(
                 return {
                     component_name: componentName,
                     source: "homebrew",
+                    homebrew_detection_reason: homebrewComponent.detectionReason,
                     imported_from: importTrace ? importSource(importTrace.imp).resolvedSource : targetNodeFile,
                     target_node_file: targetNodeFile,
                     usage_file: usage.use.getSourceFile().getFilePath().replace(projectPath, ""),
                 };
             });
-    }).flat();
-    log("Homebrew:");
+    });
+    const homebrewReasonCounts = homebrewUsages.reduce((_counts, u) => {
+        const key = u.homebrew_detection_reason ?? "unknown";
+        _counts[key] = (_counts[key] ?? 0) + 1;
+        return _counts;
+    }, {} as Record<string, number>);
+    log(`Homebrew usages ${ JSON.stringify(homebrewReasonCounts) }:`);
     componentUsageDistribution(homebrewUsages).split("\n").forEach(log);
     usageDistributionAcrossFileTree(homebrewUsages).split("\n").forEach(log);
 

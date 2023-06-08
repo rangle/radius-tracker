@@ -555,6 +555,22 @@ describe("findUsages", () => { // TODO: test traces
         assertUsagesFound();
     });
 
+    it("should not fallow the usage tracking beyond a JSX tag", async () => {
+        project.createSourceFile("usage.jsx", `
+            //       #--
+            import { Component } from "lib";
+            
+            //                          *--
+            const Intermediate = () => <Component>Hello, World!</Component>;
+            
+            //                           *--
+            const Intermediate2 = () => <Component/>;
+            
+            const App = () => <><Intermediate/><Intermediate2/></>
+        `);
+        assertUsagesFound();
+    });
+
     xit("should detect usage of an identifier in property access in JSX open tag", async () => { // TODO: unignore & fix
         project.createSourceFile("/source.jsx", `
             //           #-----

@@ -265,6 +265,7 @@ const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn):
     const parent = node.getParent();
     if (!parent) { return []; }
     if (Node.isTypeReference(parent)) { return []; } // If parent is a type reference — we're moving into type side of things, and shouldn't follow
+    if (Node.isJsxOpeningElement(parent) || Node.isJsxClosingElement(parent) || Node.isJsxSelfClosingElement(parent)) { return []; } // Don't follow up from a JSX tag — nothing is a more concrete usage point than a JSX tag
 
     if (Node.isPropertyAssignment(node) || Node.isShorthandPropertyAssignment(node)) {
         return [{ node: parent, aliasPath: [node.getName(), ...aliasPath], trace: [{ type: "ref", node }], isPotentialUsage: false }];
