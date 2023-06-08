@@ -13,7 +13,6 @@ import { join } from "path";
 import { cacheDirPath, cacheFileName, threadSpaceDirPath } from "../util/cache";
 import { getGit, getProjectPath } from "./git";
 import { Project } from "ts-morph";
-import { clearInterval } from "timers";
 
 const parentPort = parentPortImport;
 if (!parentPort) { throw new Error("Parent port not available, code not running as a worker"); }
@@ -36,6 +35,7 @@ parentPort.on("message", configParam => {
         return tg;
     };
 
+    let heartbeatInterval: NodeJS.Timer;
     (async () => {
         const sourceRepo = getGit(getProjectPath(cacheDir, config));
 
@@ -59,19 +59,20 @@ parentPort.on("message", configParam => {
         console.log(`${ tag() } Checking out commit ${ commit }`);
         await threadspaceRepo.checkout(commit);
 
-        const interval = setInterval(() => console.log(`${ tag(true) } still running`), 60000);
+        heartbeatInterval = setInterval(() => console.log(`${ tag(true) } still running`), 60000);
         const stats = await collectStats(
             new Project().getFileSystem(), // Provide the disk filesystem
             config,
             (message: string) => console.log(`${ tag() } ${ message }`),
             threadSpacePath,
         );
-        clearInterval(interval);
+        clearInterval(heartbeatInterval);
 
         writeFileSync(commitCache, JSON.stringify(stats), "utf8");
         const success: WorkerSuccessResponse = { status: "result", result: stats };
         parentPort.postMessage(success);
     })().catch(err => {
+        clearInterval(heartbeatInterval);
         const failure: WorkerFailureResponse = { status: "error", error: err };
         parentPort.postMessage(failure);
     });
