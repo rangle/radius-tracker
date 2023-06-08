@@ -103,7 +103,7 @@ const isFunction = isEither(Node.isFunctionDeclaration, Node.isFunctionExpressio
         .filter(isStringLikeLiteral)
         .find(node => node.getLiteralValue().includes(databaseFile));
     if (!databaseReferenceNode) { throw new Error(`Could not find a string literal node referencing database attachment: ${ databaseFile }`); }
-    databaseReferenceNode.setLiteralValue(databaseReferenceNode.getLiteralValue().replace(databaseFile, "usages.sqlite"));
+    databaseReferenceNode.setLiteralValue(databaseReferenceNode.getLiteralValue().replace(databaseFile, "usages.sqlite.gz"));
 
 
     // Remove dev-mode require overwrite

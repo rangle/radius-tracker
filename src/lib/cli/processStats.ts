@@ -264,7 +264,7 @@ export const statsMessage = (outfile: string) => {
     return `
 
         Stats were saved to: ${ out }
-        It's an SQLite database you can use as an input for your analysis.
+        It's a gzipped SQLite database you can use as an input for your analysis.
 
         Generate a local report by running:
         npx radius-tracker report --database ${ out }
