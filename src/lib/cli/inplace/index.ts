@@ -4,12 +4,12 @@ import { performance } from "perf_hooks";
 import { resolveStatsConfig } from "../resolveStatsConfig";
 import { StatsConfig } from "../sharedTypes";
 import { processStats, ProjectMetadata, statsMessage } from "../processStats";
-import { writeFileSync } from "fs";
 import { join, resolve } from "path";
 import { Merge } from "ts-toolbelt/out/Union/Merge";
 import { OptionalKeys } from "ts-toolbelt/out/Object/OptionalKeys";
 import { RequiredKeys } from "ts-toolbelt/out/Object/RequiredKeys";
 import { Project } from "ts-morph";
+import { writeGzippedOutput } from "../util/gzip";
 
 export default defineYargsModule(
     "in-place [path]",
@@ -70,8 +70,8 @@ export default defineYargsModule(
             ),
         }] }]);
 
-        const outfile = resolve(args.outfile || join(process.cwd(), "usages.sqlite"));
-        writeFileSync(outfile, Buffer.from(stats.export()));
+        const outfile = resolve(args.outfile || join(process.cwd(), "usages.sqlite.gz"));
+        await writeGzippedOutput(Buffer.from(stats.export()), outfile);
         console.log(statsMessage(outfile));
     },
 );

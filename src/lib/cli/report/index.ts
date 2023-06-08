@@ -16,7 +16,7 @@ export default defineYargsModule(
         .options("database", {
             type: "string",
             normalize: true,
-            default: "./usages.sqlite",
+            default: "./usages.sqlite.gz",
             describe: "Location of the database",
             demandOption: false,
         })
@@ -50,7 +50,7 @@ export default defineYargsModule(
         await copyDir(templatePath, args.outdir);
 
         // Copy the database
-        await copyFile(args.database, join(args.outdir, "files", "usages.sqlite"));
+        await copyFile(args.database, join(args.outdir, "files", "usages.sqlite.gz"));
 
         console.log(`
             Radius Tracker report written to ${ args.outdir }

@@ -23,6 +23,7 @@ export type ResolvedStatsConfig = Required<Merge<StatsConfig>>;
 
 export type UsageStat = {
     source: "homebrew" | Target,
+    homebrew_detection_reason?: string, // Only specified when source is 'homebrew'
 
     component_name: string,
 

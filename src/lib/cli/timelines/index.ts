@@ -2,7 +2,7 @@ import { ResolvedWorkerConfig, WorkerConfig } from "./workerTypes";
 import { setupWorkerPool } from "./workerPool";
 import { getTimelineForOneRepo } from "./getTimelineForOneRepo";
 import { processStats, ProjectMetadata, statsMessage } from "../processStats";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync } from "fs";
 import { isAbsolute, join, resolve } from "path";
 import { defineYargsModule } from "../util/defineYargsModule";
 import { getGit, getProjectPath, gitExists } from "./git";
@@ -10,6 +10,7 @@ import { hasProp, isDate, isNumber, isString, StringKeys } from "../../guards";
 import { defaultSubprojectPath, resolveStatsConfig } from "../resolveStatsConfig";
 import { concurrentQueue } from "./concurrentQueue";
 import { dateWeeksAgo } from "./dates";
+import { writeGzippedOutput } from "../util/gzip";
 
 
 const repoUrlKey: StringKeys<WorkerConfig> = "repoUrl";
@@ -94,7 +95,7 @@ export default defineYargsModule(
         const configs = hasDefault(configFile) ? configFile.default : configFile;
         if (!Array.isArray(configs)) { throw new Error(`Expected an array of configs, got: ${ JSON.stringify(configs) }`); }
 
-        await collectAllStats(cacheDir, args.outfile || join(process.cwd(), "usages.sqlite"), configs.map(resolveConfig), getGit);
+        await collectAllStats(cacheDir, args.outfile || join(process.cwd(), "usages.sqlite.gz"), configs.map(resolveConfig), getGit);
     },
 );
 
@@ -119,7 +120,10 @@ async function collectAllStats(cacheDir: string, outfile: string, configs: Reado
             };
             return { project, config, stats: stat };
         }));
-        writeFileSync(outfile, Buffer.from(statsDB.export()));
+
+        console.log("Writing the output to disk");
+        await writeGzippedOutput(Buffer.from(statsDB.export()), outfile);
+
         console.log(statsMessage(outfile));
     } finally {
         await pool.destroy();

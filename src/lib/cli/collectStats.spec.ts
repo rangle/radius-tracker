@@ -3,6 +3,7 @@ import { resolveStatsConfig } from "./resolveStatsConfig";
 import { InMemoryFileSystemHost } from "ts-morph";
 import { MultiTargetModuleOrPath, StatsConfig } from "./sharedTypes";
 import { join } from "path";
+import { atLeastOne } from "../guards";
 
 const noop = () => void 0;
 describe("Collect stats", () => {
@@ -79,6 +80,23 @@ describe("Collect stats", () => {
         targets.forEach(t => {
             expect(stats.filter(x => x.source === t)).toHaveLength(1);
         });
+    });
+
+    it("should find homebrew components using a tag defined with a factory method", async () => {
+        filesystem.writeFileSync("app.jsx", `
+            import styled from 'styled-components';
+            const Div = styled.div\`background: red\`;
+            const Component = () => <Div>Hello, World!</Div>;
+            export const App = () => <Component />;
+        `);
+
+        const stats = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+        expect(stats).toHaveLength(1);
+
+        const stat = atLeastOne(stats)[0];
+        expect(stat).toHaveProperty("source", "homebrew");
+        expect(stat).toHaveProperty("homebrew_detection_reason", "styled-components");
+        expect(stat).toHaveProperty("component_name", "Component");
     });
 });
 

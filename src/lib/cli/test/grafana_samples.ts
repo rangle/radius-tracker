@@ -17,6 +17,7 @@ const targets = {
     primereact: /^primereact/,
     rc: /^rc-/, // https://react-component.github.io/
     reactstrap: /^reactstrap/,
+    mantine: /^@mantine/,
 };
 
 const since = new Date("2018-04-01");
@@ -258,7 +259,7 @@ const samples: WorkerConfig[] = [ // TODO: specify ts/js configs explicitly wher
         "ozonru/flamegraph-grafana-plugin",
         "ozonru/graph-grafana-plugin",
         "ozonru/template-value-grafana-plugin",
-        "percona-platform/saas-ui",
+        // "percona-platform/saas-ui", // Removed or private repo
         "peterholmberg/fan-panel",
         "pfgithub/pfgithub-multistat-panel",
         "pgillich/grafana-tree-panel",

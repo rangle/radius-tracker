@@ -7,7 +7,7 @@ description: Analyze the adoption of your design system with the built-in Radius
 # Analyzing the output
 
 Tracker generates an SQLite database with entries for each detected component usage and,
-by default, writes it to `usages.sqlite` in the current directory. You have a few ways to visualize this data.
+by default, writes it to `usages.sqlite.gz` in the current directory. You have a few ways to visualize this data.
 
 
 ## Local report

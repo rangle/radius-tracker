@@ -16,7 +16,7 @@ const formatDate = (val: Date): string => {
 export const gitExists = () => spawnSync("git", ["--version"], { maxBuffer }).status === 0;
 export const getProjectPath = (cacheDir: string, config: ResolvedWorkerConfig) => join(repoDirPath(cacheDir), cacheFileName(config));
 
-const gitCommand = (projectPath: string, command: string) => `git --git-dir=${ join(projectPath, ".git") } --work-tree=${ projectPath } ${ command }`;
+const gitCommand = (projectPath: string, command: string) => `GIT_TERMINAL_PROMPT=false git --git-dir=${ join(projectPath, ".git") } --work-tree=${ projectPath } ${ command }`;
 const isShallowInfoProcessingError = (e: unknown) => e && typeof e === "object" && e.toString().toLowerCase().includes("error processing shallow info");
 
 export type GitAPI = {
@@ -54,10 +54,10 @@ export const setupGitAPI = (
             if (fileExists(dotGitPath)) {
                 // Don't clone if already exists
                 await exec(gitCommand(projectPath, "repack -d"));
-                await retryOnShallowInfoProcessingError("fetch");
+                await retryOnShallowInfoProcessingError("fetch -q");
             } else {
                 // Clone just the main branch
-                await retryOnShallowInfoProcessingError("clone --no-tags --single-branch --no-checkout", `${ cloneUrl } ${ dotGitPath }`);
+                await retryOnShallowInfoProcessingError("clone -q --no-tags --single-branch --no-checkout", `${ cloneUrl } ${ dotGitPath }`);
             }
         }
 
