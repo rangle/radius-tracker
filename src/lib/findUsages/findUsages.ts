@@ -55,7 +55,7 @@ export type FindUsageWarning = AmbiguousArraySpreadAssignmentWarning | Unhandled
 export type AmbiguousArraySpreadAssignmentWarning = { type: "find-usage-ambiguous-array-spread-assignment", message: string, spread: SpreadElement };
 export type UnhandledNodeType = { type: "find-usage-unhandled-node-type", message: string, useCase: string, nodeKind: string, node: Node };
 
-type ResolutionTarget = { node: Node, aliasPath: string[] };
+type ResolutionTarget = { node: Node, aliasPath: string[], suspendable: boolean };
 type ResolvedTarget = (ResolutionTarget & { trace: Trace[], isPotentialUsage: boolean });
 
 
@@ -70,6 +70,7 @@ export function setupFindUsages(dependencies: ResolveDependencies): FindUsages {
                 node: component,
                 aliasPath: [],
                 trace: [],
+                suspendable: false,
             },
             component,
             [],
@@ -112,6 +113,7 @@ const followExport: FollowStrategy = (target, dependencies) => {
         trace: [{ type: "import", imp }, { type: "export", exp }],
         aliasPath: [...aliasPath, ...target.aliasPath],
         isPotentialUsage: false, // Import is not a usage on its own
+        suspendable: target.suspendable,
     }));
 };
 
@@ -243,7 +245,7 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     return true; // Consider node a usage by default
 };
 
-const followRefs: FollowStrategy = ({ node, aliasPath }, _, warn) => {
+const followRefs: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn) => {
     if (!Node.isIdentifier(node)) { return []; }
 
     const parent = node.getParent();
@@ -256,19 +258,46 @@ const followRefs: FollowStrategy = ({ node, aliasPath }, _, warn) => {
         .filter(ref => ref.getSourceFile() === node.getSourceFile())
         .filter(ref => ref !== node);
 
-    return localReferences.map((ref): ResolvedTarget => ({ node: ref, aliasPath, trace: [], isPotentialUsage: isReferenceUsage(ref, warn) }));
+    return localReferences.map((ref): ResolvedTarget => ({
+        node: ref,
+        aliasPath,
+        trace: [],
+        isPotentialUsage: isReferenceUsage(ref, warn),
+        suspendable,
+    }));
 };
 
-const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn): ReturnType<FollowStrategy> => {
+const followParent: FollowStrategy = ({ node, aliasPath, suspendable }, _dependencies, warn): ReturnType<FollowStrategy> => {
     if (Node.isStatement(node)) { return []; }
 
     const parent = node.getParent();
     if (!parent) { return []; }
     if (Node.isTypeReference(parent)) { return []; } // If parent is a type reference — we're moving into type side of things, and shouldn't follow
-    if (Node.isJsxOpeningElement(parent) || Node.isJsxClosingElement(parent) || Node.isJsxSelfClosingElement(parent)) { return []; } // Don't follow up from a JSX tag — nothing is a more concrete usage point than a JSX tag
+    if (Node.isJsxOpeningElement(parent) || Node.isJsxClosingElement(parent) || Node.isJsxSelfClosingElement(parent)) {
+        // Don't follow up from a JSX tag — nothing is a more concrete usage point than a JSX tag,
+        // unless this the JSX tag is wrapped in suspense, in which case it's a transparent wrapper.
+        const grandparent = parent.getParent();
+        if (suspendable && Node.isJsxElement(grandparent) && grandparent.getOpeningElement().getTagNameNode().getText().includes("Suspense")) {
+            return [{
+                node: grandparent,
+                aliasPath,
+                trace: [],
+                isPotentialUsage: false,
+                suspendable: false, // Wrapped in suspend — usage no longer itself suspendable
+            }];
+        }
+
+        return [];
+    }
 
     if (Node.isPropertyAssignment(node) || Node.isShorthandPropertyAssignment(node)) {
-        return [{ node: parent, aliasPath: [node.getName(), ...aliasPath], trace: [{ type: "ref", node }], isPotentialUsage: false }];
+        return [{
+            node: parent,
+            aliasPath: [node.getName(), ...aliasPath],
+            trace: [{ type: "ref", node }],
+            isPotentialUsage: false,
+            suspendable,
+        }];
     }
 
     if (Node.isArrayLiteralExpression(parent)) {
@@ -286,7 +315,13 @@ const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn):
         }
 
         if (nodeIdx === -1) { throw new Error(`Could not find ${ describeNode(node) } in ${ describeNode(parent) }`); }
-        return [{ node: parent, aliasPath: [String(nodeIdx), ...aliasPath], trace: [{ type: "ref", node }], isPotentialUsage: false }];
+        return [{
+            node: parent,
+            aliasPath: [String(nodeIdx), ...aliasPath],
+            trace: [{ type: "ref", node }],
+            isPotentialUsage: false,
+            suspendable,
+        }];
     }
 
     if (Node.isBinaryExpression(parent) && parent.getLeft() === node) {
@@ -302,11 +337,12 @@ const followParent: FollowStrategy = ({ node, aliasPath }, _dependencies, warn):
         return [];
     }
 
-    return [{ node: parent, aliasPath, trace: [], isPotentialUsage: false }];
+    const madeSuspendable = Node.isCallExpression(parent) && parent.getExpression().forEachDescendantAsArray().some(n => n.getText().toLowerCase() === "lazy");
+    return [{ node: parent, aliasPath, trace: [], isPotentialUsage: false, suspendable: madeSuspendable || suspendable }];
 };
 
 // Given a node of the particular type on the left side — how should it be followed?
-const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<FollowStrategy> => {
+const stepIntoNode: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn): ReturnType<FollowStrategy> => {
     // TODO: annotate each check with the code it's dealing with
     if (Node.isStatement(node) && !Node.isClassDeclaration(node) && !Node.isImportEqualsDeclaration(node)) { return []; }
     if (Node.isAwaitExpression(node)) { return []; }
@@ -354,21 +390,21 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
         // TODO: When is stepping into the parentheses useful?
         //       It seems that anything useful in parentheses would already be found via refs,
         //       so the only thing we're doing is stepping back in and cutting off search because of cycling.
-        return [{ node: node.getExpression(), aliasPath, trace: [], isPotentialUsage: true }];
+        return [{ node: node.getExpression(), aliasPath, trace: [], isPotentialUsage: true, suspendable }];
     }
 
     if (Node.isVariableDeclaration(node)) {
         const variableNameNode = node.getNameNode();
         if (Node.isIdentifier(variableNameNode)) {
-            return [{ node: variableNameNode, aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+            return [{ node: variableNameNode, aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
         }
 
         if (Node.isObjectBindingPattern(variableNameNode)) {
-            return [{ node: variableNameNode, aliasPath, trace: [], isPotentialUsage: false }];
+            return [{ node: variableNameNode, aliasPath, trace: [], isPotentialUsage: false, suspendable }];
         }
 
         if (Node.isArrayBindingPattern(variableNameNode)) {
-            return [{ node: variableNameNode, aliasPath, trace: [], isPotentialUsage: false }];
+            return [{ node: variableNameNode, aliasPath, trace: [], isPotentialUsage: false, suspendable }];
         }
 
         warn({
@@ -388,7 +424,7 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
         if (aliasPath[0] !== propName) { return []; } // Different property name, don't follow
 
         const [, ...newAliasPath] = aliasPath;
-        return [{ node: node.getNameNode(), aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: true }];
+        return [{ node: node.getNameNode(), aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: true, suspendable }];
     }
 
     if (Node.isElementAccessExpression(node)) {
@@ -407,7 +443,7 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
         if (aliasPath[0] !== argument.getLiteralText()) { return []; } // Different property name, don't follow
 
         const [, ...newAliasPath] = aliasPath;
-        return [{ node, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: true }];
+        return [{ node, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: true, suspendable }];
     }
 
     if (Node.isObjectBindingPattern(node)) {
@@ -431,19 +467,19 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
         if (!matchingElement) {
             const rest = node.getElements().find(el => el.getDotDotDotToken());
             if (!rest) { return []; } // No matching element and no rest element — destructuring ignores the target
-            return [{ node: rest.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+            return [{ node: rest.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
         }
 
         const [, ...newAliasPath] = aliasPath;
         const nameNode = matchingElement.el.getNameNode();
         if (Node.isIdentifier(nameNode)) {
             // Shorthand destructuring
-            return [{ node: nameNode, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+            return [{ node: nameNode, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
         }
 
         const initializer = matchingElement.el.getInitializer() ?? matchingElement.el.getChildren()[2];
         if (!initializer) { throw new Error(`No initializer on ${ describeNode(matchingElement.el) }`); }
-        return [{ node: initializer, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+        return [{ node: initializer, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
     }
 
     if (Node.isArrayBindingPattern(node)) {
@@ -462,7 +498,7 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
         if (restElement && restElementIdx === -1) { throw new Error("Implementation error: rest element index not found within array binding pattern"); }
 
         if (restElement && !isNaN(aliasIdx) && restElementIdx <= aliasIdx) {
-            return [{ node: restElement.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+            return [{ node: restElement.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
         }
 
         // Rest element doesn't cover the target, and there's no specific matching element —
@@ -472,31 +508,31 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath }, _, warn): ReturnType<
         const [, ...newAliasPath] = aliasPath;
         const initializer = matchingElement.el.getInitializer() ?? matchingElement.el.getChildren()[0];
         if (!initializer) { throw new Error(`No initializer on ${ describeNode(matchingElement.el) }`); }
-        return [{ node: initializer, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+        return [{ node: initializer, aliasPath: newAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
     }
 
     if (Node.isBindingElement(node)) {
-        return [{ node: node.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+        return [{ node: node.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
     }
 
     if (Node.isParameterDeclaration(node)) {
-        return [{ node: node.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false }];
+        return [{ node: node.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
     }
 
     if (Node.isClassDeclaration(node)) {
         const classNameNode = node.getNameNode();
         return classNameNode
-            ? [{ node: classNameNode, aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false }]
+            ? [{ node: classNameNode, aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }]
             : [];
     }
 
     if (Node.isImportEqualsDeclaration(node)) {
         if (node.isTypeOnly()) { return []; }
-        return [{ node: node.getNameNode(), aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false }];
+        return [{ node: node.getNameNode(), aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
     }
 
     if (Node.isBinaryExpression(node)) {
-        return [{ node: node.getRight(), aliasPath: [], trace: [], isPotentialUsage: false }];
+        return [{ node: node.getRight(), aliasPath: [], trace: [], isPotentialUsage: false, suspendable }];
     }
 
     if (Node.isQualifiedName(node)) {

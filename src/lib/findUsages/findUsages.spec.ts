@@ -1189,6 +1189,20 @@ describe("findUsages", () => { // TODO: test traces
         assertUsagesFound();
     });
 
+    it("should follow the component through suspense", async () => {
+        project.createSourceFile("usage.tsx", `
+            // Detected 'esm-dynamic' import references the CallExpression, instead of ImportKeyword
+            //                                      #----- CallExpression 
+            const ImportedButton = React.lazy(() => import("target").then(mod => ({ default: mod.Button })));
+            const Namespaced = { ImportedButton }; // Make sure suspense status follows the code transformations
+            const SuspendedButton = props => <React.Suspense fallback="Loading..."><Namespaced.ImportedButton { ...props }/></React.Suspense>
+            
+            //                 *--------------
+            const App = () => <SuspendedButton>Clickety</SuspendedButton>;
+        `);
+        assertUsagesFound();
+    });
+
     // TODO: test PropertyDeclaration
     // Identifier 'PanelContextRoot' in 'export class CanvasPanel extends Component<Props, State> {
     //     static contextType = PanelContextRoot;
