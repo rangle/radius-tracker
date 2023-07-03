@@ -3,10 +3,10 @@ import { SUPPORTED_FILE_TYPES } from "../supportedFileTypes";
 import { hasProp } from "../guards";
 
 export type ResolveModule = (moduleName: string, containingFile: string) => SourceFile | ModuleResolutionWarning | null;
-export type ModuleResolutionWarning = { type: "module-resolution", message: string };
+const moduleResolutionType = "module-resolution";
+export type ModuleResolutionWarning = { type: typeof moduleResolutionType, message: string };
 
 const hasType = hasProp("type");
-const moduleResolutionType: ModuleResolutionWarning["type"] = "module-resolution";
 export const isModuleResolutionWarning = (val: unknown): val is ModuleResolutionWarning => hasType(val) && val.type === moduleResolutionType;
 
 export const setupModuleResolution = (project: Project, cwd: string): ResolveModule => {

@@ -1,3 +1,7 @@
+import { FindUsageWarning } from "./findUsages/findUsages";
+import { ImportWarning } from "./resolveDependencies/identifyImports";
+import { DependencyResolutionWarning } from "./resolveDependencies/resolveDependencies";
+
 export * as tsMorph from "ts-morph"; // Re-export ts-morph, so that the consumers run exactly the same version
 export * as tsMorphCommon from "@ts-morph/common"; // Re-export @ts-morph/common, so that the consumers run exactly the same version
 
@@ -45,6 +49,8 @@ export type {
     FindUsages,
     FindUsageWarning,
 } from "./findUsages/findUsages";
+
+export type Warning = FindUsageWarning | ImportWarning | DependencyResolutionWarning;
 
 export {
     getImportNode,

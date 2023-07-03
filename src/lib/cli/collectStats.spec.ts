@@ -1,4 +1,4 @@
-import { collectStats, isFile, listFiles } from "./collectStats";
+import { collectStats, isFile, isSubprojectPathEmptyWarning, listFiles } from "./collectStats";
 import { resolveStatsConfig } from "./resolveStatsConfig";
 import { InMemoryFileSystemHost } from "ts-morph";
 import { MultiTargetModuleOrPath, StatsConfig } from "./sharedTypes";
@@ -16,7 +16,7 @@ describe("Collect stats", () => {
     });
 
     it("should return empty stats for an empty folder", async () => {
-        const stats = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+        const { stats } = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
         expect(stats).toEqual([]);
     });
 
@@ -28,7 +28,7 @@ describe("Collect stats", () => {
             }
         `);
 
-        const stats = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+        const { stats } = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
         expect(stats.filter(x => x.source === "homebrew")).toHaveLength(1);
     });
 
@@ -42,7 +42,7 @@ describe("Collect stats", () => {
         `);
 
         config = { isTargetModuleOrPath: new RegExp(`.*${ filename }.*`) };
-        const stats = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+        const { stats } = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
         expect(stats).toEqual([]);
     });
 
@@ -53,7 +53,7 @@ describe("Collect stats", () => {
                 return <Component />;
             }
         `);
-        const stats = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+        const { stats } = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
         expect(stats.filter(x => x.source === "target")).toHaveLength(1);
     });
 
@@ -76,7 +76,7 @@ describe("Collect stats", () => {
             }, {} as MultiTargetModuleOrPath),
         };
 
-        const stats = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+        const { stats } = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
         targets.forEach(t => {
             expect(stats.filter(x => x.source === t)).toHaveLength(1);
         });
@@ -90,13 +90,23 @@ describe("Collect stats", () => {
             export const App = () => <Component />;
         `);
 
-        const stats = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+        const { stats } = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
         expect(stats).toHaveLength(1);
 
         const stat = atLeastOne(stats)[0];
         expect(stat).toHaveProperty("source", "homebrew");
         expect(stat).toHaveProperty("homebrew_detection_reason", "styled-components");
         expect(stat).toHaveProperty("component_name", "Component");
+    });
+
+    it("should report warnings", async () => {
+        config = { ...config, subprojectPath: "/does-not-exist" };
+        const { warnings } = await collectStats(filesystem, resolveStatsConfig(config), noop, "/");
+
+        expect(warnings).toHaveLength(1);
+
+        const warning = atLeastOne(warnings)[0];
+        expect(isSubprojectPathEmptyWarning(warning)).toBeTruthy();
     });
 });
 

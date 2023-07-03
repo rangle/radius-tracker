@@ -44,7 +44,14 @@ parentPort.on("message", configParam => {
             console.log(`${ tag() } Using cached stats for commit ${ commit }`);
             const cachedStats = require(commitCache); // eslint-disable-line @typescript-eslint/no-var-requires
 
-            const success: WorkerSuccessResponse = { status: "result", result: cachedStats };
+            if (!cachedStats || !Array.isArray(cachedStats.stats) || !Array.isArray(cachedStats.warnings)) {
+                throw new Error("Unexpected cache format: " + JSON.stringify(cachedStats));
+            }
+            const success: WorkerSuccessResponse = {
+                status: "result",
+                result: cachedStats.stats,
+                warnings: cachedStats.warnings,
+            };
             return parentPort.postMessage(success);
         }
 
@@ -69,7 +76,11 @@ parentPort.on("message", configParam => {
         clearInterval(heartbeatInterval);
 
         writeFileSync(commitCache, JSON.stringify(stats), "utf8");
-        const success: WorkerSuccessResponse = { status: "result", result: stats };
+        const success: WorkerSuccessResponse = {
+            status: "result",
+            result: stats.stats,
+            warnings: stats.warnings,
+        };
         parentPort.postMessage(success);
     })().catch(err => {
         clearInterval(heartbeatInterval);

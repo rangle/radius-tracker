@@ -233,7 +233,7 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     if (Node.isJsxSpreadAttribute(parent)) { return true; }
     if (Node.isAsExpression(parent)) { return true; }
     if (Node.isBindingElement(parent)) { return true; }
-    if (Node.isNewExpression(parent)) { return true; } // TODO: test: Identifier 'JsonExplorer' in 'const jsonExp = new JsonExplorer(jsonObject, expansionLevel, { animateOpen: true });'
+    if (Node.isNewExpression(parent)) { return true; }
 
     warn({
         type: "find-usage-unhandled-node-type",
