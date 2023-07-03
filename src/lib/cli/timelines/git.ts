@@ -17,7 +17,6 @@ export const gitExists = () => spawnSync("git", ["--version"], { maxBuffer }).st
 export const getProjectPath = (cacheDir: string, config: ResolvedWorkerConfig) => join(repoDirPath(cacheDir), cacheFileName(config));
 
 const gitCommand = (projectPath: string, command: string) => `GIT_TERMINAL_PROMPT=false git --git-dir=${ join(projectPath, ".git") } --work-tree=${ projectPath } ${ command }`;
-const isShallowInfoProcessingError = (e: unknown) => e && typeof e === "object" && e.toString().toLowerCase().includes("error processing shallow info");
 
 export type GitAPI = {
     listCommits: () => Promise<{ ts: Date, oid: string }[]>,
@@ -42,10 +41,8 @@ export const setupGitAPI = (
             const retryOnShallowInfoProcessingError = async (commandAndOpts: string, pathParams = "") => {
                 try {
                     await exec(gitCommand(projectPath, `${ commandAndOpts } --shallow-since=${ formatDate(since) } ${ pathParams }`));
-                } catch (e) {
-                    if (!isShallowInfoProcessingError(e)) { throw e; }
-
-                    // Sometimes shallow info doesn't contain enough data to process the update, so we need to fetch the entire repo history
+                } catch (_) {
+                    // If git fails with `--shallow-since` flag, assume it's due to shallow copying and retry without it.
                     await exec(gitCommand(projectPath, `${ commandAndOpts } ${ pathParams }`));
                 }
             };
