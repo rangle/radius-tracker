@@ -1,6 +1,7 @@
 import { Primitive } from "ts-toolbelt/out/Misc/Primitive";
 import { StatsConfig, UsageStat } from "../sharedTypes";
 import { Merge } from "ts-toolbelt/out/Union/Merge";
+import { Warning } from "../collectStats";
 
 const maxWeeksKey = "maxWeeks";
 type DurationConfig = { [maxWeeksKey]: number } | { since: Date };
@@ -10,7 +11,7 @@ export type WorkerConfig = StatsConfig & DurationConfig & {
 };
 export type ResolvedWorkerConfig = Omit<Required<Merge<WorkerConfig>>, typeof maxWeeksKey>;
 
-export type WorkerSuccessResponse = { status: "result", result: UsageStat[] };
+export type WorkerSuccessResponse = { status: "result", result: UsageStat[], warnings: Warning[] };
 export type WorkerFailureResponse = { status: "error", error: unknown };
 export type WorkerResponse = WorkerSuccessResponse | WorkerFailureResponse;
 export type WorkerPayload = { config: ResolvedWorkerConfig, commit: string, cacheDir: string };
@@ -40,4 +41,4 @@ export type JsonOf<T> = T extends Exclude<Primitive, symbol | undefined> ? T
     : { [P in keyof T]: JsonOf<T[P]> };
 
 export type CommitData = { oid: string, ts: Date, weeksAgo: number, expectedDate: Date };
-export type Stats = { commit: CommitData, stats: UsageStat[] }[];
+export type Stats = { commit: CommitData, stats: UsageStat[], warnings: Warning[] }[];

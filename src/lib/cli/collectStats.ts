@@ -7,11 +7,19 @@ import { hasProp, isNotUndefined, isRegexp, objectEntries, objectValues } from "
 import { SUPPORTED_FILE_TYPES } from "../supportedFileTypes";
 import { isModuleResolutionWarning, setupModuleResolution } from "../resolveModule/resolveModule";
 import { resolveDependencies } from "../resolveDependencies/resolveDependencies";
-import { isTraceImport, setupFindUsages } from "../findUsages/findUsages";
+import { FindUsages, FindUsageWarning, isTraceImport, setupFindUsages } from "../findUsages/findUsages";
 import { getImportFile, getImportNode, Import } from "../resolveDependencies/identifyImports";
 import { detectHomebrew } from "../detectHomebrew/detectHomebrew";
 import { ResolvedStatsConfig, UsageStat } from "./sharedTypes";
 import { componentUsageDistribution, usageDistributionAcrossFileTree } from "./util/stats";
+import { Warning as LibWarnings } from "../index";
+
+export type Warning = Pick<LibWarnings, "type" | "message"> | SubprojectPathEmptyWarning;
+
+const subprojectPathEmptyType = "subproject-path-empty";
+type SubprojectPathEmptyWarning = { type: typeof subprojectPathEmptyType, message: string };
+export const isSubprojectPathEmptyWarning = (warning: Warning): warning is SubprojectPathEmptyWarning => warning.type === subprojectPathEmptyType;
+
 
 const jsRe = /\.jsx?$/;
 const yarnDirRe = /\/\.yarn\//;
@@ -23,7 +31,8 @@ export async function collectStats(
     config: ResolvedStatsConfig,
     log: (message: string) => void,
     projectPath: string,
-): Promise<UsageStat[]> {
+): Promise<{ stats: UsageStat[], warnings: Warning[] }> {
+    const fullSubprojectPath = join(projectPath, config.subprojectPath);
     const tsconfigPath = join(config.subprojectPath, (hasTSConfig(config) && config.tsconfigPath) || "tsconfig.json");
     const jsconfigPath = join(config.subprojectPath, (hasJSConfig(config) && config.jsconfigPath) || "jsconfig.json");
 
@@ -68,9 +77,14 @@ export async function collectStats(
 
     log("Populating ts-morph project");
     const allowJs = isTsProject ? project.getCompilerOptions().allowJs ?? false : true;
+    if (!isDirectory(filesystem, fullSubprojectPath)) {
+        const warning: SubprojectPathEmptyWarning = { type: "subproject-path-empty", message: `Directory ${ config.subprojectPath } does not exist` };
+        return { stats: [], warnings: [warning] };
+    }
+
     const projectFiles = listFiles(
         filesystem,
-        join(projectPath, config.subprojectPath),
+        fullSubprojectPath,
         f => (allowJs || !jsRe.test(f))
             && !yarnDirRe.test(f)
             && !config.isIgnoredFile.test(f),
@@ -101,7 +115,7 @@ export async function collectStats(
         });
 
     log("Resolving dependencies");
-    const resolve = setupModuleResolution(project, join(projectPath, config.subprojectPath));
+    const resolve = setupModuleResolution(project, fullSubprojectPath);
     const dependencies = resolveDependencies(project, resolve);
 
     const findUsages = setupFindUsages(dependencies);
@@ -118,6 +132,12 @@ export async function collectStats(
     const allTargetRe = objectValues(isTargetModuleOrPathMap);
     const isAnyTargetModuleOrPath = (s: string) => allTargetRe.some(regEx => regEx.test(s));
 
+    const detectionWarnings: Pick<FindUsageWarning, "type" | "message">[] = [];
+    type OneOrArray<T> = T | ReadonlyArray<T>;
+    const logDetectionWarnings = (detections: OneOrArray<ReturnType<FindUsages>>): void => {
+        detectionWarnings.push(...(Array.isArray(detections) ? detections : [detections]).flatMap(d => d.warnings));
+    };
+
     const allTargetUsages = objectEntries(isTargetModuleOrPathMap).map(([targetName, isTargetModuleOrPath]) => {
         const targetImports = dependencies.filterImports(imp => {
             const { containingFilePath, resolvedSource } = importSource(imp);
@@ -129,7 +149,9 @@ export async function collectStats(
 
         const targetUsages = targetImports.map((imp): UsageStat[] => {
             const componentName = getImportNode(imp).print();
-            return findUsages(getImportNode(imp)).usages
+            const detections = findUsages(getImportNode(imp));
+            logDetectionWarnings(detections);
+            return detections.usages
                 .filter(use => config.isValidUsage({ source: targetName, ...use }))
                 .map(usage => ({
                     component_name: componentName,
@@ -153,10 +175,13 @@ export async function collectStats(
     ];
     const factoryDomReferences = domReferenceFactories
         .map(f => {
-            const nodes = dependencies
+            const detections = dependencies
                 .filterImports(imp => f.re.test(imp.moduleSpecifier))
                 .map(getImportNode)
-                .map(n => findUsages(n))
+                .map(n => findUsages(n));
+
+            logDetectionWarnings(detections);
+            const nodes = detections
                 .flatMap(u => u.usages)
                 .map(u => u.use);
 
@@ -177,7 +202,9 @@ export async function collectStats(
 
     const homebrewUsages = homebrew.flatMap((homebrewComponent): UsageStat[] => {
         const componentName = homebrewComponent.identifier ? homebrewComponent.identifier.print() : homebrewComponent.declaration.print().replace(/\n/g, " ");
-        return findUsages(homebrewComponent.identifier ?? homebrewComponent.declaration).usages
+        const detections = findUsages(homebrewComponent.identifier ?? homebrewComponent.declaration);
+        logDetectionWarnings(detections);
+        return detections.usages
             .filter(({ use }) => !isAnyTargetModuleOrPath(use.getSourceFile().getFilePath().replace(projectPath, ""))) // Ignore usages in target directory (in case target is a directory)
             .filter(use => config.isValidUsage({ source: "homebrew", ...use }))
             .map(usage => {
@@ -203,12 +230,29 @@ export async function collectStats(
     componentUsageDistribution(homebrewUsages).split("\n").forEach(log);
     usageDistributionAcrossFileTree(homebrewUsages).split("\n").forEach(log);
 
-    return [...allTargetUsages.flat(), ...homebrewUsages];
+    const allWarnings = [
+        ...dependencies.warnings,
+        ...detectionWarnings,
+    ].map(w => ({ type: w.type, message: w.message }));
+    log(allWarnings.map(({ type, message }) => `Warn ${ type }: ${ message }`).join("\n"));
+
+    return {
+        stats: [...allTargetUsages.flat(), ...homebrewUsages],
+        warnings: allWarnings,
+    };
 }
 
 export function isFile(filesystem: FileSystemHost, path: string): boolean {
     try {
         return filesystem.fileExistsSync(path);
+    } catch (e) {
+        return false;
+    }
+}
+
+export function isDirectory(filesystem: FileSystemHost, path: string): boolean {
+    try {
+        return filesystem.directoryExistsSync(path);
     } catch (e) {
         return false;
     }

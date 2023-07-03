@@ -55,23 +55,25 @@ export default defineYargsModule(
             url: args.path ?? ".",
             subprojectPath: "/",
         };
-        const stats = await processStats([{ project, config, stats: [{
+        const stats = await collectStats(
+            new Project().getFileSystem(), // Provide the disk filesystem
+            config,
+            (message: string) => console.log(`${ tag() } ${ message }`),
+            resolve(args.path ?? process.cwd()),
+        );
+
+        const statsDB = await processStats([{ project, config, stats: [{
             commit: {
                 oid: "latest",
                 weeksAgo: 0,
                 ts: new Date(),
                 expectedDate: new Date(),
             },
-            stats: await collectStats(
-                new Project().getFileSystem(), // Provide the disk filesystem
-                config,
-                (message: string) => console.log(`${ tag() } ${ message }`),
-                resolve(args.path ?? process.cwd()),
-            ),
+            ...stats,
         }] }]);
 
         const outfile = resolve(args.outfile || join(process.cwd(), "usages.sqlite.gz"));
-        await writeGzippedOutput(Buffer.from(stats.export()), outfile);
+        await writeGzippedOutput(Buffer.from(statsDB.export()), outfile);
         console.log(statsMessage(outfile));
     },
 );

@@ -13,6 +13,7 @@ import { setupWorkerPool } from "./workerPool";
 import { unexpected } from "../../guards";
 import { UsageStat } from "../sharedTypes";
 import { dateWeeksAgo, midnightToday } from "./dates";
+import { isSubprojectPathEmptyWarning, Warning } from "../collectStats";
 
 export const getTimelineForOneRepo = async (
     cacheDir: string,
@@ -33,7 +34,7 @@ export const getTimelineForOneRepo = async (
         return [commit, ...uniq];
     }, [] as string[]);
 
-    const commitStats: { commit: string, stats: UsageStat[] }[] = await Promise.all(uniqueCommits.reverse().map(async commit => {
+    const commitStats: { commit: string, stats: UsageStat[], warnings: Warning[] }[] = await Promise.all(uniqueCommits.reverse().map(async commit => {
         const payload: PostMessageOf<WorkerPayload> = {
             commit,
             cacheDir,
@@ -46,12 +47,18 @@ export const getTimelineForOneRepo = async (
 
         const resp: PostMessageOf<WorkerResponse> | PostMessageOf<JsonOf<WorkerResponse>> = await workerPool.exec(payload);
         if (resp.status === "error") { throw resp.error; }
-        if (resp.status === "result") { return { commit, stats: resp.result }; }
+        if (resp.status === "result") { return { commit, stats: resp.result, warnings: resp.warnings }; }
         return unexpected(resp);
     }));
 
-    const statsByCommit = new Map<string, UsageStat[]>();
-    commitStats.forEach(({ commit, stats }) => statsByCommit.set(commit, stats));
+    const statsByCommit = new Map<string, { stats: UsageStat[], warnings: Warning[] }>();
+    commitStats.forEach(({ commit, stats, warnings }) => statsByCommit.set(commit, { stats, warnings }));
+
+    if (commitStats.every(stat => stat.warnings.some(isSubprojectPathEmptyWarning))) {
+        // In every commit there is a warning about a missing subproject path —
+        // that path is missing through entire checked history, and is certainly a configuration mistake.
+        throw new Error(`Subproject path '${ config.subprojectPath }' missing in all analyzed commits`);
+    }
 
     return timeline.map(commitData => {
         const stats = statsByCommit.get(commitData.oid);
@@ -59,7 +66,7 @@ export const getTimelineForOneRepo = async (
 
         return {
             commit: commitData,
-            stats,
+            ...stats,
         };
     });
 };
