@@ -29,7 +29,7 @@ describe("Git API", () => {
             await git.listCommits();
             const firstCallArgs = exec.mock.calls[0];
             if (!firstCallArgs) { throw new Error("Expected a git log to be called at least once"); }
-            expect(firstCallArgs[0]).toContain("log --pretty=format:'%H %as'");
+            expect(firstCallArgs[0]).toContain("log --pretty=format:\"%H %as\"");
         });
 
         it("should return the parsed commit data", async () => {

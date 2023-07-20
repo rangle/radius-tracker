@@ -1,5 +1,6 @@
 import { objectKeys } from "../../guards";
 import { UsageStat } from "../sharedTypes";
+import { sep } from "path";
 
 export function usageDistributionAcrossFileTree(usages: UsageStat[]): string {
     const inc = (agg: { [f: string]: number }, chunk: string) => agg[chunk] = (agg[chunk] ?? 0) + 1;
@@ -7,7 +8,7 @@ export function usageDistributionAcrossFileTree(usages: UsageStat[]): string {
     const usageCounts = usages
         .map(usage => usage.usage_file)
         .reduce((_agg, f) => {
-            const [firstChunk, ...chunks] = f.split("/");
+            const [firstChunk, ...chunks] = f.split(sep);
 
             if (firstChunk === undefined) {
                 inc(_agg, "/");

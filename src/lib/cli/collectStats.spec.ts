@@ -2,7 +2,6 @@ import { collectStats, isFile, isSubprojectPathEmptyWarning, listFiles } from ".
 import { resolveStatsConfig } from "./resolveStatsConfig";
 import { InMemoryFileSystemHost } from "ts-morph";
 import { MultiTargetModuleOrPath, StatsConfig } from "./sharedTypes";
-import { join } from "path";
 import { atLeastOne } from "../guards";
 
 const noop = () => void 0;
@@ -131,7 +130,7 @@ describe("collectStats fs helpers", () => {
                 "/another_dir/h",
                 "/root_i",
                 "/root_j",
-            ].map(f => join(pathPrefix, f));
+            ].map(f => pathPrefix + f);
             expectedFiles.forEach(f => filesystem.writeFileSync(f, ""));
 
             const files = listFiles(filesystem, pathPrefix, () => true);
@@ -153,7 +152,7 @@ describe("collectStats fs helpers", () => {
 
         it("should return false if the path points to a directory", async () => {
             const path = "/path/to/directory";
-            filesystem.writeFileSync(join(path, "file"), "");
+            filesystem.writeFileSync(path + "/file", "");
             expect(isFile(filesystem, path)).toEqual(false);
         });
     });
