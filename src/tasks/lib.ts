@@ -63,5 +63,5 @@ export const buildTasks = (opt: BuildOptions) => {
         )
         : work();
 
-    return work(testTask, localregistryTask);
+    return work(buildAll, testTask, localregistryTask);
 };
