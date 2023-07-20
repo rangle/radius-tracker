@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join, sep } from "path";
 
 import { CompilerOptions, FileSystemHost, Node, Project } from "ts-morph";
 import { TransactionalFileSystem, TsConfigResolver } from "@ts-morph/common";
@@ -266,7 +266,7 @@ export function listFiles(
     const files: string[] = [];
     const dir = filesystem.readDirSync(path);
     for (const stat of dir) {
-        if (stat.name.replace(path, "") === "/.git") { continue; } // Ignore git contents
+        if (stat.name.replace(path, "") === sep + ".git") { continue; } // Ignore git contents
         if (!filter(stat.name)) { continue; } // Skip ignored files
 
         if (stat.isFile) { files.push(stat.name); }
