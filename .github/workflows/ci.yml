@@ -29,7 +29,7 @@ jobs:
         run: npm install -g yarn
       - name: Run Tests and Build 🦺
         # Report template generator does not work on Windows, but also we run it on Ubuntu during release.
-        run: yarn build ${{ matrix.os == 'windows-latest' && '--no-generateReportTemplate' }}
+        run: yarn build ${{ matrix.os == 'windows-latest' && '--no-generateReportTemplate' || '' }}
       - name: Parse a timeline from a React TodoApp
         # Uses a build of the tracker to run an e2e test
         run: npx ./build timelines ./src/lib/cli/test/react_todoapp.js
