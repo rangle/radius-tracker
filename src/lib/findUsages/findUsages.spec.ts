@@ -41,7 +41,14 @@ describe("findUsages", () => { // TODO: test traces
         const commentRanges = project.getSourceFiles()
             .map(source => source.forEachDescendantAsArray())
             .reduce((a, b) => [...a, ...b], [])
-            .map(node => node.getLeadingCommentRanges().map(comment => ({ node, comment })))
+            .map(node => {
+                const jsDocs = Node.isJSDocable(node) ? node.getJsDocs() : [];
+                const jsDocContents = jsDocs.map(jsd => jsd.getText());
+
+                return node.getLeadingCommentRanges()
+                    .filter(comment => !jsDocContents.includes(comment.getText()))
+                    .map(comment => ({ node, comment }));
+            })
             .reduce((a, b) => [...a, ...b], [])
             .reduce((nodes, item) => {
                 const matching = nodes.findIndex(n => n.comment.getText() === item.comment.getText() && n.comment.getPos() === item.comment.getPos());
@@ -1203,9 +1210,148 @@ describe("findUsages", () => { // TODO: test traces
         assertUsagesFound();
     });
 
-    // TODO: test PropertyDeclaration
-    // Identifier 'PanelContextRoot' in 'export class CanvasPanel extends Component<Props, State> {
-    //     static contextType = PanelContextRoot;
-    //     ...
-    // }
+    it("should follow NewExpression", async () => {
+        project.createSourceFile("/panel_component.tsx", `
+            import React from "react";
+
+            //    #----------
+            class SimplePanel extends React.Component {
+                render() {
+                    return <div/>;
+                }
+            }
+            
+            export { SimplePanel };
+        `);
+
+        project.createSourceFile("usage.tsx", `
+            import { SimplePanel } from '/panel_component.tsx';
+            
+            interface SimpleOptions {
+              searchLimit: number;
+            }
+            
+            //                                                   *----------
+            export const plugin = new PanelPlugin<SimpleOptions>(SimplePanel).setPanelOptions(builder => {
+                return void 0;
+            })
+        `);
+        assertUsagesFound();
+    });
+
+    // TODO: this test has a problem with property access not matching the aliasPath
+    xit("should handle delete expressions", async () => {
+        project.createSourceFile("usage.tsx", `
+            //    #--------
+            const Component = () => <div/>;
+            
+            const set = {
+                Component,
+                unrelated: 1,
+            };
+            delete set.unrelated;
+            
+            export const App = () => {
+                const C = set.Component;
+                
+                //      *
+                return <C/>;
+            };
+        `);
+        assertUsagesFound();
+    });
+
+    // TODO: this test has a problem with property access not matching the aliasPath
+    //       and doesn't follow usage in the array.
+    xit("should follow through for of loop", async () => {
+        project.createSourceFile("usage.tsx", `
+            //    #---
+            const Cell = () => <div/>;
+            
+            const Row = (props) => {
+                const cells = [
+                    { name: "Host", isVisible: props.hostVisible, render: Cell },
+                    { name: "Status", isVisible: true, render: Cell },
+                    { name: "Problem", isVisible: props.problems.length > 0, render: Cell }, 
+                ];
+                
+                const result = [];
+                for (const cell of cells) {
+                    if (cell.isVisible) {
+                        result.push(cell);
+                    }
+                }
+                
+                return <>{ result.map((cell, idx) => {
+                    const Component = cell.render;
+                    
+                    //      *--------
+                    return <Component key={ idx } { ...props }/>;
+                }) }</>;
+            }
+        `);
+        assertUsagesFound();
+    });
+
+    it("should follow through NonNull declarations", async () => {
+        project.createSourceFile("usage.tsx", `
+            //    #--------
+            const Component = () => <div/>;
+            const MaybeComponent: (typeof Component) | undefined = Component;
+            
+            export const App = () => {
+                const C = MaybeComponent!;
+                
+                //      *
+                return <C/>;
+            };
+        `);
+        assertUsagesFound();
+    });
+
+    it("should ignore references inside JsDoc", async () => {
+        project.createSourceFile("usage.tsx", `
+            /**
+             * Props for {@link Component}
+             * @internal
+             */
+            interface ComponentProps {}
+            
+            //    #--------
+            const Component = (props: ComponentProps) => <div/>;
+            
+            //                        *--------
+            export const App = () => <Component/>;
+        `);
+        assertUsagesFound();
+    });
+
+    xit("should follow property declarations", async () => {
+        project.createSourceFile("usage.tsx", `
+            //    #--------
+            const Component = () => <div/>;
+            
+            class Renderable {
+                public editor = Component;
+                
+                public viewer;
+                setViewer(c: typeof Component) {
+                    this.viewer = c;
+                }                
+            }
+            
+            const r = new Renderable();
+            
+            //          *--------
+            r.setViewer(Component);
+            
+            export const App = () => {
+                const C = Renderable.editor;
+                
+                //      *
+                return <C/>;
+            };
+        `);
+        assertUsagesFound();
+    });
 });

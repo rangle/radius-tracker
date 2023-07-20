@@ -1,4 +1,4 @@
-import { CallExpression, Node, SpreadElement } from "ts-morph";
+import { CallExpression, Node, SpreadElement, VariableDeclaration } from "ts-morph";
 import { ValueExport } from "../resolveDependencies/identifyExports";
 import { getImportNode, Import } from "../resolveDependencies/identifyImports";
 import { ResolveDependencies } from "../resolveDependencies/resolveDependencies";
@@ -117,6 +117,12 @@ const followExport: FollowStrategy = (target, dependencies) => {
     }));
 };
 
+const isForLoopStatement = isEither(
+    Node.isForStatement,
+    Node.isForInStatement,
+    Node.isForOfStatement,
+);
+
 // Is node on the left hand side a definition for an identifier?
 const isIdentifierDefinitionParent = (node: Node, warn: Warn): boolean => {
     // These happen, but not valid definition parents
@@ -149,6 +155,10 @@ const isIdentifierDefinitionParent = (node: Node, warn: Warn): boolean => {
     if (Node.isJsxSpreadAttribute(node)) { return false; }
     if (Node.isAsExpression(node)) { return false; } // Type casts aren't used in identifier definitions
     if (Node.isTypeReference(node)) { return false; } // Type references aren't used in identifier definitions
+    if (Node.isNewExpression(node)) { return false; }
+    if (isForLoopStatement(node)) { return false; } // Loops are not definition parents, the variable declarations inside them are
+    if (Node.isPropertyDeclaration(node)) { return false; }
+    if (Node.isNonNullExpression(node)) { return false; }
 
     // These are valid definition parents
     if (Node.isBindingElement(node)) { return true; }
@@ -172,8 +182,6 @@ const isIdentifierDefinitionParent = (node: Node, warn: Warn): boolean => {
     return false; // Not a definition node by default
 };
 
-const isTypeDeclaration = isEither(Node.isTypeAliasDeclaration, Node.isInterfaceDeclaration);
-
 // Is the node on the right hand side a valid usage position for a ref?
 const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     const parent = node.getParent();
@@ -190,15 +198,13 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
         return false;
     }
 
-    if (node.getAncestors().some(Node.isJSDoc)) { return false; } // JSDoc entries aren't usages
-    if (node.getAncestors().some(isTypeDeclaration)) { return false; } // Anything inside type declaration isn't a usage
-
     if (Node.isExportAssignment(parent)) { return false; }
     if (Node.isExportSpecifier(parent)) { return false; }
     if (Node.isImportSpecifier(parent)) { return false; }
     if (Node.isImportClause(parent)) { return false; }
     if (Node.isNamespaceImport(parent)) { return false; }
     if (Node.isVariableDeclaration(parent)) { return false; } // Should follow the variable, but declaration itself is not a usage
+    if (isForLoopStatement(parent)) { return false; } // Should follow the variable, but declaration in a loop is not a usage
     if (Node.isPropertyAssignment(parent)) { return false; }
     if (Node.isShorthandPropertyAssignment(parent)) { return false; }
     if (Node.isArrayLiteralExpression(parent)) { return false; }
@@ -211,6 +217,8 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     if (Node.isTypeOfExpression(parent)) { return false; } // Usage in `typeof <x>` JS expression shouldn't count
     if (Node.isTypeReference(parent)) { return false; } // Usage in `typeof <x>` JS expression shouldn't count
     if (Node.isNamedImports(parent)) { return false; } // `SyntaxList` case from https://github.com/excalidraw/excalidraw/blob/bf6d0eeef7ea73525484fe680fd72f46ab490d51/src/actions/actionMenu.tsx#L1 — can't reproduce in tests
+    if (Node.isPropertyDeclaration(parent)) { return false; }
+    if (Node.isNonNullExpression(parent)) { return false; } // Should follow the reference, but NonNull expression itself is not a usage
 
     if (Node.isJsxExpression(parent)) { return true; }
     if (Node.isJsxOpeningElement(parent)) { return true; }
@@ -245,6 +253,15 @@ const isReferenceUsage = (node: Node, warn: Warn): boolean => {
     return true; // Consider node a usage by default
 };
 
+const isTypeDeclaration = isEither(Node.isTypeAliasDeclaration, Node.isInterfaceDeclaration);
+const shouldFollowRef = (node: Node) => {
+    if (Node.isCommentNode(node) || node.getAncestors().some(Node.isCommentNode)) { return false; } // Ignore anything in comments
+    if (Node.isJSDoc(node) || node.getAncestors().some(Node.isJSDoc)) { return false; } // Ignore anything in JSDocs
+    if (isTypeDeclaration(node) || node.getAncestors().some(isTypeDeclaration)) { return false; } // Anything inside type declaration shouldn't be considered
+
+    return true;
+};
+
 const followRefs: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn) => {
     if (!Node.isIdentifier(node)) { return []; }
 
@@ -256,6 +273,7 @@ const followRefs: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn) =
     // following exports is a more precise way to navigate between files.
     const localReferences = (Node.isReferenceFindable(node) ? node.findReferencesAsNodes() : [])
         .filter(ref => ref.getSourceFile() === node.getSourceFile())
+        .filter(shouldFollowRef)
         .filter(ref => ref !== node);
 
     return localReferences.map((ref): ResolvedTarget => ({
@@ -343,11 +361,31 @@ const followParent: FollowStrategy = ({ node, aliasPath, suspendable }, _depende
 
 // Given a node of the particular type on the left side — how should it be followed?
 const stepIntoNode: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn): ReturnType<FollowStrategy> => {
+    if (Node.isClassDeclaration(node)) {
+        const classNameNode = node.getNameNode();
+        return classNameNode
+            ? [{ node: classNameNode, aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }]
+            : [];
+    }
+
+    if (Node.isImportEqualsDeclaration(node)) {
+        if (node.isTypeOnly()) { return []; }
+        return [{ node: node.getNameNode(), aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
+    }
+
+    if (isForLoopStatement(node)) {
+        const initializer = node.getInitializer();
+        if (!initializer) { return []; }
+
+        const [_index, ...nextAliasPath] = aliasPath;
+        return [{ node: initializer, aliasPath: nextAliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
+    }
+
     // TODO: annotate each check with the code it's dealing with
-    if (Node.isStatement(node) && !Node.isClassDeclaration(node) && !Node.isImportEqualsDeclaration(node)) { return []; }
+    if (Node.isStatement(node)) { return []; } // By default, assume there's no need to step into statements
+
     if (Node.isAwaitExpression(node)) { return []; }
     if (Node.isIdentifier(node)) { return []; }
-    if (Node.isVariableDeclarationList(node)) { return []; }
     if (Node.isCallExpression(node)) { return []; }
     if (Node.isImportSpecifier(node)) { return []; }
     if (Node.isNamedImports(node)) { return []; }
@@ -385,6 +423,8 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn)
     if (Node.isJsxSpreadAttribute(node)) { return []; }
     if (Node.isTypeReference(node)) { return []; }
     if (node.getKindName() === "SyntaxList") { return []; } // Case from https://github.com/excalidraw/excalidraw/blob/bf6d0eeef7ea73525484fe680fd72f46ab490d51/src/actions/actionMenu.tsx#L1 — can't reproduce in tests
+    if (Node.isNewExpression(node)) { return []; }
+    if (Node.isDeleteExpression(node)) { return []; }
 
     if (Node.isParenthesizedExpression(node)) {
         // TODO: When is stepping into the parentheses useful?
@@ -393,10 +433,10 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn)
         return [{ node: node.getExpression(), aliasPath, trace: [], isPotentialUsage: true, suspendable }];
     }
 
-    if (Node.isVariableDeclaration(node)) {
-        const variableNameNode = node.getNameNode();
+    const resolveVariableDeclaration = (declaration: VariableDeclaration): ReturnType<FollowStrategy> => {
+        const variableNameNode = declaration.getNameNode();
         if (Node.isIdentifier(variableNameNode)) {
-            return [{ node: variableNameNode, aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
+            return [{ node: variableNameNode, aliasPath, trace: [{ type: "ref", node: declaration }], isPotentialUsage: false, suspendable }];
         }
 
         if (Node.isObjectBindingPattern(variableNameNode)) {
@@ -415,6 +455,18 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn)
             node: variableNameNode,
         });
         return [];
+    };
+
+    if (Node.isVariableDeclarationList(node)) {
+        return node.getDeclarations().flatMap(resolveVariableDeclaration);
+    }
+
+    if (Node.isVariableDeclaration(node)) {
+        return resolveVariableDeclaration(node);
+    }
+
+    if (Node.isNonNullExpression(node)) {
+        return [{ node: node.getExpression(), aliasPath, trace: [], isPotentialUsage: true, suspendable }];
     }
 
     if (Node.isPropertyAccessExpression(node)) {
@@ -517,18 +569,6 @@ const stepIntoNode: FollowStrategy = ({ node, aliasPath, suspendable }, _, warn)
 
     if (Node.isParameterDeclaration(node)) {
         return [{ node: node.getNameNode(), aliasPath, trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
-    }
-
-    if (Node.isClassDeclaration(node)) {
-        const classNameNode = node.getNameNode();
-        return classNameNode
-            ? [{ node: classNameNode, aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }]
-            : [];
-    }
-
-    if (Node.isImportEqualsDeclaration(node)) {
-        if (node.isTypeOnly()) { return []; }
-        return [{ node: node.getNameNode(), aliasPath: [], trace: [{ type: "ref", node }], isPotentialUsage: false, suspendable }];
     }
 
     if (Node.isBinaryExpression(node)) {
