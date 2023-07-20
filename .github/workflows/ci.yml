@@ -10,12 +10,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
     strategy:
       matrix:
         node-version: [14.17.x, 16.x, 18.x]
+        os: [ubuntu-latest, windows-latest]
 
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v2
@@ -29,3 +29,6 @@ jobs:
         run: npm install -g yarn
       - name: Run Tests and Build 🦺
         run: yarn build
+      - name: Parse a timeline from a React TodoApp
+        # Uses a build of the tracker to run an e2e test
+        run: npx ./build timelines ./src/lib/cli/test/react_todoapp.js

@@ -16,7 +16,7 @@ const formatDate = (val: Date): string => {
 export const gitExists = () => spawnSync("git", ["--version"], { maxBuffer }).status === 0;
 export const getProjectPath = (cacheDir: string, config: ResolvedWorkerConfig) => join(repoDirPath(cacheDir), cacheFileName(config));
 
-const gitCommand = (projectPath: string, command: string) => `GIT_TERMINAL_PROMPT=false git --git-dir=${ join(projectPath, ".git") } --work-tree=${ projectPath } ${ command }`;
+const gitCommand = (projectPath: string, command: string) => `git --git-dir=${ join(projectPath, ".git") } --work-tree=${ projectPath } ${ command }`;
 
 export type GitAPI = {
     listCommits: () => Promise<{ ts: Date, oid: string }[]>,
@@ -26,9 +26,18 @@ export type GitAPI = {
 };
 
 export const setupGitAPI = (
-    exec: (command: string) => Promise<{ stdout: string }>,
+    exec: (command: string, opts?: { env?: NodeJS.ProcessEnv | undefined } | undefined) => Promise<{ stdout: string }>,
     fileExists: (path: string) => boolean,
 ): (projectPath: string) => GitAPI => {
+    const gitExec = (command: string) => exec(command, {
+        env: {
+            ...process.env,
+
+            // Disable terminal prompt, so that git fails when credentials are required.
+            // Tracker is non-interactive, so getting stuck on a prompt is not a helpful behaviour.
+            GIT_TERMINAL_PROMPT: "false",
+        },
+    });
     const getAPI = (projectPath: string): GitAPI => {
         return {
             listCommits,
@@ -40,17 +49,17 @@ export const setupGitAPI = (
         async function cloneOrUpdate(cloneUrl: string, since: Date) {
             const retryOnShallowInfoProcessingError = async (commandAndOpts: string, pathParams = "") => {
                 try {
-                    await exec(gitCommand(projectPath, `${ commandAndOpts } --shallow-since=${ formatDate(since) } ${ pathParams }`));
+                    await gitExec(gitCommand(projectPath, `${ commandAndOpts } --shallow-since=${ formatDate(since) } ${ pathParams }`));
                 } catch (_) {
                     // If git fails with `--shallow-since` flag, assume it's due to shallow copying and retry without it.
-                    await exec(gitCommand(projectPath, `${ commandAndOpts } ${ pathParams }`));
+                    await gitExec(gitCommand(projectPath, `${ commandAndOpts } ${ pathParams }`));
                 }
             };
 
             const dotGitPath = join(projectPath, ".git");
             if (fileExists(dotGitPath)) {
                 // Don't clone if already exists
-                await exec(gitCommand(projectPath, "repack -d"));
+                await gitExec(gitCommand(projectPath, "repack -d"));
                 await retryOnShallowInfoProcessingError("fetch -q");
             } else {
                 // Clone just the main branch
@@ -59,7 +68,7 @@ export const setupGitAPI = (
         }
 
         async function listCommits() {
-            const { stdout } = await exec(gitCommand(projectPath, "log --pretty=format:'%H %as'"));
+            const { stdout } = await gitExec(gitCommand(projectPath, "log --pretty=format:\"%H %as\""));
             return stdout
                 .split("\n")
                 .map(line => {
@@ -73,12 +82,12 @@ export const setupGitAPI = (
         }
 
         async function cloneNoCheckout(destination: string) {
-            await exec(`git clone --no-checkout ${ projectPath } ${ destination }`);
+            await gitExec(`git clone --no-checkout ${ projectPath } ${ destination }`);
             return getAPI(destination);
         }
 
         async function checkout(ref: string) {
-            await exec(gitCommand(projectPath, `checkout --force ${ ref }`));
+            await gitExec(gitCommand(projectPath, `checkout --force ${ ref }`));
         }
     };
 
