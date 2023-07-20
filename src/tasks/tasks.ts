@@ -31,6 +31,10 @@ yargs(hideBin(process.argv))
             .option("generateReportTemplate", {
                 type: "boolean",
                 default: true,
+            })
+            .option("launchFromLocalRegistry", {
+                type: "boolean",
+                default: true,
             }),
         args => exec(buildTasks, args),
     )

@@ -20,7 +20,11 @@ const buildDocs = satisfies(process.version, docsPackageEngines.node)
 
 export const test = work(jest, typecheck, lint, buildDocs);
 
-type BuildOptions = { test?: boolean, generateReportTemplate?: boolean };
+type BuildOptions = {
+    test?: boolean,
+    generateReportTemplate?: boolean,
+    launchFromLocalRegistry?: boolean,
+};
 export const buildTasks = (opt: BuildOptions) => {
     const generateReportTemplate = cmd("yarn cli report-generate-template");
 
@@ -47,13 +51,17 @@ export const buildTasks = (opt: BuildOptions) => {
         buildLib,
         opt.generateReportTemplate ? generateReportTemplate : null,
     ].filter(isNotNull));
-    if (!opt.test) { return buildAll; }
 
+    const testTask = opt.test ? test : work();
     const launchLocalRegistry = work(cmd("verdaccio -l 8080 -c ./src/tasks/verdaccio.yml", detectLog("http://localhost:8080")))
         .after(cmd("rm -rf /tmp/verdaccio-storage"));
 
-    return work(cmd("./src/tasks/execute_from_local_registry.sh")).after(
-        launchLocalRegistry,
-        work(cmd("./src/tasks/publish_to_local_registry.sh")).after(launchLocalRegistry, buildAll, test),
-    );
+    const localregistryTask = opt.launchFromLocalRegistry
+        ? work(cmd("./src/tasks/execute_from_local_registry.sh")).after(
+            launchLocalRegistry,
+            work(cmd("./src/tasks/publish_to_local_registry.sh")).after(launchLocalRegistry, buildAll, test),
+        )
+        : work();
+
+    return work(testTask, localregistryTask);
 };
