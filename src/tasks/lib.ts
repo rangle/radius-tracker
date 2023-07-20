@@ -3,6 +3,7 @@ import { satisfies } from "semver";
 
 import { engines as docsPackageEngines } from "../docs/package.json";
 import { join, normalize } from "path";
+import { isNotNull } from "../lib/guards";
 
 type LintOptions = { fix?: boolean };
 export const lint = (opt: LintOptions) => cmd(`eslint ./ --ext .ts,.tsx --ignore-path .gitignore --max-warnings 0${ opt.fix ? " --fix" : "" }`);
@@ -19,7 +20,7 @@ const buildDocs = satisfies(process.version, docsPackageEngines.node)
 
 export const test = work(jest, typecheck, lint, buildDocs);
 
-type BuildOptions = { test?: boolean };
+type BuildOptions = { test?: boolean, generateReportTemplate?: boolean };
 export const buildTasks = (opt: BuildOptions) => {
     const generateReportTemplate = cmd("yarn cli report-generate-template");
 
@@ -42,7 +43,10 @@ export const buildTasks = (opt: BuildOptions) => {
             cmd("tsc -b tsconfig-lib-types.json"),
         );
 
-    const buildAll = work(buildLib,generateReportTemplate);
+    const buildAll = work(...[
+        buildLib,
+        opt.generateReportTemplate ? generateReportTemplate : null,
+    ].filter(isNotNull));
     if (!opt.test) { return buildAll; }
 
     const launchLocalRegistry = work(cmd("verdaccio -l 8080 -c ./src/tasks/verdaccio.yml", detectLog("http://localhost:8080")))
