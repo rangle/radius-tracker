@@ -70,8 +70,8 @@
     "tasklauncher": "0.0.10",
     "ts-node": "^10.5.0",
     "ts-toolbelt": "^9.6.0",
-    "verdaccio": "^5.8.0",
-    "verdaccio-memory": "^10.2.0"
+    "verdaccio": "^5.26.1",
+    "verdaccio-memory": "^10.3.2"
   },
   "engines": {
     "node": ">=14.17.0",
