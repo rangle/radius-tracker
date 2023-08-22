@@ -58,7 +58,7 @@ parentPort.on("message", configParam => {
         const threadSpacePath = threadSpaceDirPath(cacheDir);
 
         console.log(`${ tag() } Collecting stats for commit ${ commit }`);
-        rmSync(threadSpacePath, { force: true, recursive: true });
+        rmSync(threadSpacePath, { force: true, recursive: true, maxRetries: 10 });
 
         console.log(`${ tag() } Cloning from ${ getProjectPath(cacheDir, config) }`);
         const threadspaceRepo = await sourceRepo.cloneNoCheckout(threadSpacePath);
