@@ -43,7 +43,7 @@ export default defineYargsModule(
         }
 
         // Clean up the target location
-        await rm(args.outdir, { recursive: true, force: true });
+        await rm(args.outdir, { recursive: true, force: true, maxRetries: 10 });
 
         // Copy the report template
         const templatePath = args.template || await resolveBundledTemplateDirectory();
