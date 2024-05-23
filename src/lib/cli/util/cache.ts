@@ -20,6 +20,7 @@ const cacheConfigKeys: { [P in StringKeys<CacheConfig>]-?: null } = {
     subprojectPath: null,
     tsconfigPath: null,
     jsconfigPath: null,
+    domReferenceFactories: null,
 };
 
 export const cacheFileName = (config: CacheConfig) => {

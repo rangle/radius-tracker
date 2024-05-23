@@ -168,11 +168,7 @@ export async function collectStats(
         return targetUsages;
     });
 
-
-    const domReferenceFactories: ReadonlyArray<{ name: string, re: RegExp }> = [
-        { name: "styled-components", re: /styled-components/ },
-        { name: "stitches", re: /^@stitches/ },
-    ];
+    const domReferenceFactories = objectEntries(config.domReferenceFactories).map(([name, re]) => ({ name, re }));
     const factoryDomReferences = domReferenceFactories
         .map(f => {
             const detections = dependencies

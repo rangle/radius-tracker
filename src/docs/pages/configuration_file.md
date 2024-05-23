@@ -48,6 +48,14 @@ export default [
         //            Defaults to "/"
         subprojectPath: "/",
 
+        // [optional] Regexp testing if an import path comes from a library
+        //            that wraps built-in JSX elements, e.g. `styled.div`.
+        //            This is used for detecting custom components implemented
+        //            using such libraries.
+        domReferenceFactories: {
+            "styled-components": /styled-components/,
+        },
+
         // [optional] Regexp specifying which file paths to exclude.
         //            See the document below for the default value & details.
         isIgnoredFile: /\/node_modules\//,

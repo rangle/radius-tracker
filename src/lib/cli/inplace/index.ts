@@ -46,6 +46,7 @@ export default defineYargsModule(
             isValidUsage: undefined,
             subprojectPath: "/",
             isIgnoredFile: args.ignoredFileRe ? new RegExp(args.ignoredFileRe) : undefined,
+            domReferenceFactories: undefined,
         };
 
         const config = resolveStatsConfig(unresolvedConfig);
