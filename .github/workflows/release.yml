@@ -15,13 +15,16 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
       - name: Install Yarn 🚧
         if: ${{ env.ACT }}
         run: npm install -g yarn
       - name: Build Package 🛠
         run: yarn build
       - name: Release 🚀
-        run: npx semantic-release --debug
+        run: npx semantic-release@"^24.0.0" --debug
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
