@@ -10,6 +10,8 @@ import inplaceCommand from "./inplace";
 
 import reportGenerateTemplateCommand from "./report/generate_template";
 import reportCommand from "./report";
+import { defineYargsModule } from "./util/defineYargsModule";
+import { cacheVersion } from "./util/cacheVersion";
 
 yargs(hideBin(process.argv))
     .scriptName("radius-tracker")
@@ -17,6 +19,7 @@ yargs(hideBin(process.argv))
     .command(inplaceCommand)
     .command(reportCommand)
     .command(reportGenerateTemplateCommand)
+    .command(defineYargsModule("cache_version", "show cache information", {}, () => console.log(cacheVersion)))
     .strictCommands()
     .demandCommand()
     .recommendCommands()
