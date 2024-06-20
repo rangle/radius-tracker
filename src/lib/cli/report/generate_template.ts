@@ -11,7 +11,7 @@ import { platform } from "os";
 // a) the report itself is working correctly,
 // b) there are no errors in the browser console, and no dom nodes marked with `observablehq-error` class
 // c) no network requests go outside of localhost.
-const defaultReportUrl = "https://api.observablehq.com/@smoogly/design-system-metrics@453.tgz?v=3";
+const defaultReportUrl = "https://api.observablehq.com/@smoogly/design-system-metrics@454.tgz?v=3";
 
 export default defineYargsModule(
     "report-generate-template [url]",
