@@ -44,7 +44,16 @@ const hasTsconfigPath = hasProp(tsconfigPathKey);
 const jsconfigPathKey: StringKeys<StatsConfig> = "jsconfigPath";
 const hasJsconfigPath = hasProp(jsconfigPathKey);
 
-const isMultiTargetModuleOrPathDefinition = isObjectOf(isString, isRegexp);
+const domReferenceFactoriesKey: StringKeys<StatsConfig> = "domReferenceFactories";
+const hasDomReferenceFactories = hasProp(domReferenceFactoriesKey);
+
+const isStringRegexRecord = isObjectOf(isString, isRegexp);
+
+export const defaultDomReferenceFactories = {
+    "styled-components": /styled-components/,
+    "stitches": /^@stitches/,
+    "emotion": /^@emotion\/styled/,
+};
 
 export const defaultIgnoreFileRe = /((\.(tests?|specs?|stories|story)\.)|(\/(tests?|specs?|stories|story)\/)|(\/node_modules\/)|(\/__mocks__\/)|(\.d\.ts$))/;
 export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStatsConfig => {
@@ -62,7 +71,7 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
 
     if (!hasIsTargetModuleOrPath(config)) { throw new Error("Expected the config to specify isTargetModuleOrPath regexp or set"); }
     const isTargetModuleOrPath = config.isTargetModuleOrPath;
-    if (!isRegexp(isTargetModuleOrPath) && !isMultiTargetModuleOrPathDefinition(isTargetModuleOrPath)) {
+    if (!isRegexp(isTargetModuleOrPath) && !isStringRegexRecord(isTargetModuleOrPath)) {
         throw new Error(`Expected a regexp or a set of regexp isTargetModuleOrPath, got: ${ isTargetModuleOrPath }`);
     }
     if (!isRegexp(isTargetModuleOrPath)) {
@@ -80,6 +89,11 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
     const isValidUsage = hasIsValidUsage(config) && config.isValidUsage ? config.isValidUsage : () => true;
     if (!isFunction(isValidUsage)) { throw new Error(`Expected isTargetImport to be a filter function if given, got: ${ isTargetImport }`); }
 
+    const domReferenceFactories = hasDomReferenceFactories(config) ? config.domReferenceFactories : defaultDomReferenceFactories;
+    if (!isStringRegexRecord(domReferenceFactories)) {
+        throw new Error(`Expected a set of regexps in domReferenceFactories, got: ${ domReferenceFactories }`);
+    }
+
     return {
         subprojectPath,
         tsconfigPath,
@@ -88,5 +102,6 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
         isTargetModuleOrPath,
         isTargetImport: isTargetImport as ResolvedStatsConfig["isTargetImport"],
         isValidUsage: isValidUsage as ResolvedStatsConfig["isValidUsage"],
+        domReferenceFactories,
     };
 };

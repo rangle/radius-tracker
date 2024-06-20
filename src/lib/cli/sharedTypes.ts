@@ -11,6 +11,7 @@ type StatsConfigBase = {
     isTargetImport?: (imp: Import) => boolean,
     isValidUsage?: (use: Usage & { source: "homebrew" | Target }) => boolean,
     subprojectPath?: string,
+    domReferenceFactories?: Record<string, RegExp>,
 };
 
 type ExclusiveConfigPaths = { tsconfigPath?: null, jsconfigPath?: null }
