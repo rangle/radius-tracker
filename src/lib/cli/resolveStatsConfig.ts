@@ -89,7 +89,7 @@ export const resolveStatsConfig = (config: StatsConfig | unknown): ResolvedStats
     const isValidUsage = hasIsValidUsage(config) && config.isValidUsage ? config.isValidUsage : () => true;
     if (!isFunction(isValidUsage)) { throw new Error(`Expected isTargetImport to be a filter function if given, got: ${ isTargetImport }`); }
 
-    const domReferenceFactories = hasDomReferenceFactories(config) ? config.domReferenceFactories : defaultDomReferenceFactories;
+    const domReferenceFactories = hasDomReferenceFactories(config) && config.domReferenceFactories ? config.domReferenceFactories : defaultDomReferenceFactories;
     if (!isStringRegexRecord(domReferenceFactories)) {
         throw new Error(`Expected a set of regexps in domReferenceFactories, got: ${ domReferenceFactories }`);
     }
